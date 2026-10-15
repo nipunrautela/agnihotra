@@ -1,4 +1,4 @@
-param([string]$DeviceSerial, [string]$JavaHome)
+param([string]$DeviceSerial, [string]$JavaHome, [string]$TestClass)
 
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
@@ -30,7 +30,9 @@ try {
     if ($DeviceSerial) { $env:ANDROID_SERIAL = $DeviceSerial }
     Write-Host "Testing isolated installation: $testIdentity"
     $wrapper = if ([Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT) { Join-Path $projectRoot 'gradlew.bat' } else { Join-Path $projectRoot 'gradlew' }
-    & $wrapper -p $scratchRoot :app:connectedDebugAndroidTest --no-daemon --console=plain
+    $testArguments = @('-p', $scratchRoot, ':app:connectedDebugAndroidTest', '--no-daemon', '--console=plain')
+    if ($TestClass) { $testArguments += "-Pandroid.testInstrumentationRunnerArguments.class=$TestClass" }
+    & $wrapper @testArguments
     if ($LASTEXITCODE -ne 0) { throw "Device tests failed. Reports: $scratchRoot\app\build\reports\androidTests\connected\debug\index.html" }
     Write-Host "Device tests passed. Report: $scratchRoot\app\build\reports\androidTests\connected\debug\index.html"
 } finally {
