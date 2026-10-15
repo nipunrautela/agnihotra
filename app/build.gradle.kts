@@ -25,6 +25,8 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            // Include function symbols from native dependencies when supplied by their publisher.
+            ndk { debugSymbolLevel = "SYMBOL_TABLE" }
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
