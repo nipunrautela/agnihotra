@@ -2,10 +2,10 @@ package com.nipunrautela.agnihotra.integrations
 
 import com.nipunrautela.agnihotra.core.SolarEventType
 
-/** External content/configuration is intentionally deferred; empty values have useful UI fallbacks. */
+/** Public release links and explicitly approved audio resources. */
 object ReleaseConfiguration {
-    // Fill after the reviewed privacy policy has a public URL.
-    val privacyPolicyUrl: String? = null
+    // GitHub Pages; HTTPS and the deployed English/Hindi policy have been verified.
+    val privacyPolicyUrl: String? = "https://nipunrautela.me/agnihotra/"
     val supportEmail: String? = "rautelanipun@gmail.com"
 
     // Add approved, redistributable recordings to res/raw and map their R.raw IDs here.

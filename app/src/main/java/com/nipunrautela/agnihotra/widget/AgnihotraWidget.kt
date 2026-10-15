@@ -58,7 +58,10 @@ class AgnihotraWidget : GlanceAppWidget() {
         provideContent {
             val roomy = LocalSize.current.height >= 210.dp
             val wide = LocalSize.current.width >= 300.dp
-            val dense = context.resources.configuration.fontScale >= 1.3f && LocalSize.current.height < 300.dp
+            val dense = context.resources.configuration.fontScale >= 1.3f
+            val showHeader = !dense && LocalSize.current.height >= 210.dp
+            val showNext = !dense && LocalSize.current.height >= 240.dp
+            val showZone = !dense && LocalSize.current.height >= 270.dp
             Column(GlanceModifier.fillMaxSize()
                 .background(ImageProvider(if (dark) R.drawable.widget_background_dark else R.drawable.widget_background_light))
                 .appWidgetBackground().cornerRadius(24.dp).padding(if (dense) 10.dp else if (roomy) 18.dp else 14.dp)
@@ -66,7 +69,7 @@ class AgnihotraWidget : GlanceAppWidget() {
                     .putExtra("widget_place_id", place?.id)
                     .addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP))),
                 verticalAlignment = Alignment.CenterVertically) {
-                if (!dense && LocalSize.current.height >= 180.dp) Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                if (showHeader) Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Image(ImageProvider(R.drawable.widget_flame), contentDescription = null, modifier = GlanceModifier.size(16.dp))
                     Spacer(GlanceModifier.width(6.dp))
                     Text(textContext.getString(R.string.app_name), style = TextStyle(color = ColorProvider(accent), fontSize = 12.sp,
@@ -76,12 +79,16 @@ class AgnihotraWidget : GlanceAppWidget() {
                         Text(date, style = TextStyle(color = ColorProvider(secondary), fontSize = 11.sp), maxLines = 1)
                     }
                 }
-                if (!dense && LocalSize.current.height >= 180.dp) Spacer(GlanceModifier.height(4.dp))
-                Text(place?.name ?: textContext.getString(R.string.choose_location),
-                    style = TextStyle(color = ColorProvider(foreground), fontSize = if (dense) 16.sp else if (roomy) 21.sp else 18.sp, fontWeight = FontWeight.Bold), maxLines = 1)
-                place?.areaName?.let {
-                    Spacer(GlanceModifier.height(3.dp))
-                    Text(it, style = TextStyle(color = ColorProvider(secondary), fontSize = if (dense) 10.sp else 11.sp), maxLines = 1)
+                if (showHeader) Spacer(GlanceModifier.height(4.dp))
+                // Glance containers support ten direct children; group place metadata so
+                // expanded widgets retain the next-event and time-zone footer as well.
+                Column {
+                    Text(place?.name ?: textContext.getString(R.string.choose_location),
+                        style = TextStyle(color = ColorProvider(foreground), fontSize = if (dense) 16.sp else if (roomy) 21.sp else 18.sp, fontWeight = FontWeight.Bold), maxLines = 1)
+                    place?.areaName?.let {
+                        Spacer(GlanceModifier.height(3.dp))
+                        Text(it, style = TextStyle(color = ColorProvider(secondary), fontSize = if (dense) 10.sp else 11.sp), maxLines = 1)
+                    }
                 }
                 Spacer(GlanceModifier.height(if (dense) 4.dp else if (roomy) 12.dp else 8.dp))
                 if (place == null) Text(textContext.getString(if (selectedId != null) R.string.widget_place_removed else R.string.widget_setup), style = TextStyle(color = ColorProvider(secondary)))
@@ -92,11 +99,11 @@ class AgnihotraWidget : GlanceAppWidget() {
                     EventTile(textContext.getString(R.string.sunset), sunset, R.drawable.widget_sunset,
                         foreground, secondary, tile, wide, roomy, dense, GlanceModifier.defaultWeight())
                 }
-                if (!dense && nextText != null && LocalSize.current.height >= 180.dp) {
+                if (showNext && nextText != null) {
                     Spacer(GlanceModifier.height(12.dp))
                     Text(nextText, style = TextStyle(color = ColorProvider(accent), fontSize = 12.sp), maxLines = 1)
                 }
-                if (!dense && place != null && LocalSize.current.height >= 230.dp) {
+                if (showZone && place != null) {
                     Spacer(GlanceModifier.height(4.dp))
                     Text(place.zoneId, style = TextStyle(color = ColorProvider(secondary), fontSize = 11.sp), maxLines = 1)
                 }

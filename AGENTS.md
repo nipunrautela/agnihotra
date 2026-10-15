@@ -117,9 +117,10 @@ Firebase Analytics still requires that local project configuration.
 - App-instance identifiers mean analytics is not fully anonymous. Keep privacy
   statements and Play Data safety answers aligned with actual SDK behavior.
 - Crash reporting is a separate decision; do not add it implicitly with Analytics.
-- The public privacy-policy URL and approved bundled audio IDs remain empty in
-  `integrations/ReleaseConfiguration.kt`; the owner-approved support contact is
-  configured. Keep graceful fallbacks until real values are supplied. Never
+- The English/Hindi privacy policy is published through GitHub Pages at
+  `https://nipunrautela.me/agnihotra/`, with its URL and owner-approved support
+  contact in `integrations/ReleaseConfiguration.kt`. Approved mantra audio IDs
+  remain empty; keep graceful fallbacks until recordings are supplied. Never
   fabricate service credentials,
   contact addresses, recordings, or successful backend connections.
 - Keep credentials, signing keys, and machine-specific secrets out of Git and
