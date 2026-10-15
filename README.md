@@ -28,11 +28,14 @@ It will be free and ad-free, with no account required.
 
 Analytics is enabled by default, with opt-out in settings. It includes
 app-instance identifiers and approximate city-level reporting from the connection.
-Advertising features are disabled. Custom events exclude saved locations, birth
-dates, age information, and mantra activity. The app does not ask for your birth date.
+Advertising features are disabled. Custom events exclude saved locations and
+mantra activity.
 
 Saved places and settings stay on the device. Location access is used while the
 app is open. Online search and area-name lookup
 may send coordinates or search text to the device’s geocoding
 provider. Offline city suggestions and manual entry are available to everyone.
 Timetable files are exported or shared only when requested.
+
+Read the [privacy policy in English and Hindi](https://nipunrautela.me/agnihotra/).
+Support: [rautelanipun@gmail.com](mailto:rautelanipun@gmail.com).
