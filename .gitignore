@@ -12,6 +12,7 @@
 .gradle/
 .kotlin/
 **/build/
+/app/release/
 /local.properties
 .externalNativeBuild/
 .cxx/
