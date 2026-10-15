@@ -47,9 +47,17 @@ class WidgetRenderingTest {
     @Test fun expandedDarkHindiWidgetKeepsAllTextInsideItsBounds() = runBlocking {
         graph.preferences.setString("theme", "dark")
         graph.preferences.setString("language", "hi")
-        val labels = renderAndCheckBounds(340, 230)
+        val labels = renderAndCheckBounds(340, 300)
         assertTrue(labels.containsAll(listOf("Current location", "Connaught Place, New Delhi", "सूर्योदय", "सूर्यास्त")))
-        assertTrue(labels.contains("Asia/Kolkata"))
+        assertTrue("Expanded widget labels: $labels", labels.contains("Asia/Kolkata"))
+    }
+
+    @Test fun intermediateWidgetKeepsBothTimesVisibleWithItsHeader() = runBlocking {
+        graph.preferences.setString("theme", "light")
+        graph.preferences.setString("language", "en")
+        val labels = renderAndCheckBounds(300, 210)
+        assertTrue(labels.containsAll(listOf("Agnihotra", "Current location", "Connaught Place, New Delhi", "Sunrise", "Sunset")))
+        assertEquals(2, labels.count { it.contains(Regex("\\d:\\d{2}")) })
     }
 
     @Test fun compactWidgetAtLargeFontKeepsAreaTimesAndAccessibleEventLabels() = runBlocking {
