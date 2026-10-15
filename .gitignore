@@ -1,0 +1,33 @@
+# Local planning and research; keep these documents out of version control.
+/docs/
+/.tools/
+/app/google-services.json
+
+# Local IDE configuration.
+.idea/
+*.iml
+.vscode/
+
+# Android and Gradle generated files and machine-specific configuration.
+.gradle/
+.kotlin/
+**/build/
+/local.properties
+.externalNativeBuild/
+.cxx/
+captures/
+*.apk
+*.aab
+*.ap_
+
+# Local signing credentials and secrets.
+*.jks
+*.keystore
+keystore.properties
+.env
+.env.*
+!.env.example
+
+# OS-generated files.
+.DS_Store
+Thumbs.db

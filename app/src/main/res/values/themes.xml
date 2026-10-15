@@ -1,0 +1,10 @@
+<resources>
+    <style name="Base.Theme.Agnihotra" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:windowBackground">#FAF6EF</item>
+        <item name="android:colorAccent">#955032</item>
+    </style>
+    <style name="Theme.Agnihotra" parent="Base.Theme.Agnihotra" />
+</resources>

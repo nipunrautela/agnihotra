@@ -1,0 +1,9 @@
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="240dp" android:minHeight="140dp"
+    android:targetCellWidth="4" android:targetCellHeight="2"
+    android:initialLayout="@layout/glance_default_loading_layout"
+    android:previewLayout="@layout/widget_preview"
+    android:configure="com.nipunrautela.agnihotra.widget.WidgetConfigurationActivity"
+    android:widgetFeatures="reconfigurable|configuration_optional"
+    android:resizeMode="horizontal|vertical" android:updatePeriodMillis="1800000"
+    android:widgetCategory="home_screen" android:description="@string/widget_description" />
