@@ -2,6 +2,8 @@ package com.nipunrautela.agnihotra
 
 import android.app.Application
 import android.content.Context
+import android.content.ComponentName
+import android.appwidget.AppWidgetManager
 import android.util.Log
 import androidx.room.Room
 import com.nipunrautela.agnihotra.analytics.Analytics
@@ -9,10 +11,11 @@ import com.nipunrautela.agnihotra.core.SolarCalculator
 import com.nipunrautela.agnihotra.data.*
 import com.nipunrautela.agnihotra.reminders.ReminderScheduler
 import com.nipunrautela.agnihotra.widget.AgnihotraWidget
+import com.nipunrautela.agnihotra.widget.AgnihotraWidgetReceiver
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
-import androidx.glance.appwidget.updateAll
+import androidx.glance.appwidget.GlanceAppWidgetManager
 
 class AgnihotraApplication : Application() {
     val graph by lazy { AppGraph(this) }
@@ -50,7 +53,15 @@ class AppGraph(private val context: Context) {
     }
 
     private suspend fun updateWidgets() {
-        try { AgnihotraWidget().updateAll(context) }
+        try {
+            // Glance 1.1 persists provider class names, which R8 can rename between releases.
+            // Android's registered widget IDs remain valid across an app upgrade.
+            val ids = AppWidgetManager.getInstance(context)
+                .getAppWidgetIds(ComponentName(context, AgnihotraWidgetReceiver::class.java))
+            val manager = GlanceAppWidgetManager(context)
+            val widget = AgnihotraWidget()
+            ids.forEach { widget.update(context, manager.getGlanceIdBy(it)) }
+        }
         catch (cancelled: CancellationException) { throw cancelled }
         catch (_: Exception) {
             // A launcher/widget failure must not stop future preference/alarm updates.

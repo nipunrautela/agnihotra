@@ -44,13 +44,16 @@ class ReminderScheduler(private val context: Context) {
             .putExtra(Settings.EXTRA_CHANNEL_ID, channelId(prefs))
     }
 
-    private fun channelId(prefs: AppPreferences) = "agnihotra_${prefs.sound}_${prefs.vibration}"
+    internal fun channelId(prefs: AppPreferences) = "agnihotra_${prefs.sound}_${prefs.vibration}"
 
     @Synchronized
     fun reschedule(place: SavedPlace?, prefs: AppPreferences) {
         PendingIntent.getBroadcast(context, 40, Intent(context, ReminderReceiver::class.java),
             PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE)?.let(manager::cancel)
-        if (place == null || !hasExactAccess() || !hasNotificationAccess(prefs)) return
+        if (place == null || !hasExactAccess() || !hasNotificationAccess(prefs)) {
+            context.stopService(Intent(context, ReminderAlarmService::class.java))
+            return
+        }
         val next = ReminderPlanner().upcoming(Instant.now(), place.coordinates, place.zone,
             prefs.sunriseReminder, prefs.sunsetReminder, prefs.preparationMinutes).firstOrNull() ?: return
         val intent = Intent(context, ReminderReceiver::class.java)
@@ -69,6 +72,23 @@ class ReminderScheduler(private val context: Context) {
 
     fun notify(place: SavedPlace, prefs: AppPreferences, type: SolarEventType, eventTime: Instant, preparation: Boolean) {
         if (!hasNotificationAccess(prefs)) return
+        ensureChannel(prefs)
+        val intent = Intent(context, ReminderAlarmService::class.java)
+            .setAction(ReminderAlarmService.ACTION_RING)
+            .putExtra("place_id", place.id).putExtra("event_type", type.name)
+            .putExtra("event_time", eventTime.toEpochMilli()).putExtra("preparation", preparation)
+            .putExtra("initial_notification", notification(place, prefs, type, eventTime, preparation).build())
+        if (prefs.sound || prefs.vibration) {
+            try { ContextCompat.startForegroundService(context, intent); return }
+            catch (_: IllegalStateException) { /* OS disallowed background playback; retain a normal alert. */ }
+            catch (_: SecurityException) { /* Exact-alarm access may have been revoked. */ }
+        }
+        try { NotificationManagerCompat.from(context).notify(ReminderAlarmService.NOTIFICATION_ID,
+            notification(place, prefs, type, eventTime, preparation).build()) }
+        catch (_: SecurityException) { /* Notification access changed while posting. */ }
+    }
+
+    internal fun ensureChannel(prefs: AppPreferences): NotificationChannel {
         val textContext = context.withAppLanguage(prefs.language)
         val channelId = channelId(prefs)
         val channel = NotificationChannel(channelId, textContext.getString(R.string.reminder_channel), NotificationManager.IMPORTANCE_HIGH).apply {
@@ -78,18 +98,22 @@ class ReminderScheduler(private val context: Context) {
             setSound(if (prefs.sound) ReminderChime.uri(context) else null, ReminderChime.attributes)
         }
         context.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+        return context.getSystemService(NotificationManager::class.java).getNotificationChannel(channelId)
+    }
+
+    internal fun notification(place: SavedPlace, prefs: AppPreferences, type: SolarEventType,
+        eventTime: Instant, preparation: Boolean): NotificationCompat.Builder {
+        val textContext = context.withAppLanguage(prefs.language)
         val eventName = textContext.getString(if (type == SolarEventType.SUNRISE) R.string.sunrise else R.string.sunset)
         val time = eventTime.atZone(place.zone).format(timeFormatter(context.use24HourTime(prefs.timeFormat), textContext.resources.configuration.locales[0]))
         val title = textContext.getString(if (preparation) R.string.preparation_notification else R.string.event_notification, eventName)
-        val notification = NotificationCompat.Builder(context, channelId)
+        return NotificationCompat.Builder(context, channelId(prefs))
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
             .setContentText(textContext.getString(R.string.notification_detail, place.name, time))
             .setContentIntent(openApp()).setAutoCancel(true)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
-            .setPriority(NotificationCompat.PRIORITY_HIGH).build()
-        try { NotificationManagerCompat.from(context).notify(if (preparation) 41 else 42, notification) }
-        catch (_: SecurityException) { /* Notification access changed while posting. */ }
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
     }
 
     private fun openApp() = PendingIntent.getActivity(context, 0,

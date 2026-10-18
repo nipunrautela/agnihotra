@@ -146,8 +146,10 @@ private fun AppContent(model: AppViewModel, state: AppState) {
     }
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top),
                 title = {
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                         Icon(Icons.Outlined.LocalFireDepartment, null, tint = MaterialTheme.colorScheme.primary)
@@ -173,7 +175,9 @@ private fun AppContent(model: AppViewModel, state: AppState) {
             )
         },
         bottomBar = {
-            if (state.places.isNotEmpty() && page !in listOf(Page.SETTINGS, Page.PRIVACY, Page.FOCUS)) NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
+            if (state.places.isNotEmpty() && page !in listOf(Page.SETTINGS, Page.PRIVACY, Page.FOCUS)) NavigationBar(
+                containerColor = MaterialTheme.colorScheme.surface,
+                windowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)) {
                 listOf(Page.TODAY, Page.TIMETABLE, Page.MANTRAS, Page.PLACES).forEach { destination ->
                     val icon = when (destination) {
                         Page.TODAY -> Icons.Outlined.WbSunny
@@ -190,7 +194,7 @@ private fun AppContent(model: AppViewModel, state: AppState) {
         },
         snackbarHost = { SnackbarHost(snackbar) },
     ) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding)) {
+        Box(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
             when {
                 state.loading -> CircularProgressIndicator(Modifier.align(androidx.compose.ui.Alignment.Center))
                 page == Page.PRIVACY -> PrivacyPage()
@@ -215,7 +219,8 @@ private fun AppContent(model: AppViewModel, state: AppState) {
                             model.graph.analytics.record(UsageEvent.WIDGET_PIN_REQUESTED)
                         Unit
                     }) else null,
-                    onChimePreview = { model.graph.analytics.record(UsageEvent.CHIME_PREVIEWED) })
+                    onChimePreview = { model.graph.analytics.record(UsageEvent.CHIME_PREVIEWED) },
+                    onAlarmDuration = model::alarmDuration)
                 state.places.isEmpty() -> WelcomeScreen(showAdd)
                 page == Page.FOCUS -> FocusPage(state, model.graph.calculator) { pageName = Page.MANTRAS.name }
                 page == Page.TODAY -> TodayPage(state, model.graph.calculator,

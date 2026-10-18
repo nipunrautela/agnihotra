@@ -6,7 +6,7 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
+import androidx.core.view.WindowCompat
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -45,7 +45,7 @@ class WidgetConfigurationActivity : ComponentActivity() {
         if (widgetId == AppWidgetManager.INVALID_APPWIDGET_ID || info?.provider != ComponentName(this, AgnihotraWidgetReceiver::class.java)) {
             finish(); return
         }
-        enableEdgeToEdge()
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         setContent {
             val places by appGraph.places.observe().collectAsStateWithLifecycle(emptyList())
             val prefs by appGraph.preferences.preferences.collectAsStateWithLifecycle(AppPreferences())

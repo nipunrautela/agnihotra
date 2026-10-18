@@ -152,6 +152,15 @@ and UI fixtures use disposable app data. Prefer `tools/verify_device.ps1`, which
 builds a separate `.verification` application ID and omits local Firebase/signing
 files. The direct `connectedDebugAndroidTest` task can clear/uninstall its target;
 do not run it against the owner's real installation without explaining that risk.
+Use `tools/verify_device.ps1 -Release` to exercise optimized builds, including
+`WidgetReleaseIntegrationTest`: debug-only rendering does not catch constructors
+removed by R8. `-BuildOnly` creates disposable verification APKs without installing
+them. Alarm device tests enable permissions only for the verification app through
+Android Settings and briefly play actual alarm audio; keep the device idle.
+Release verification defaults to the widget reflection smoke test and retains
+test-runner Kotlin/tracing support only in the disposable target. Run the full
+Compose/alarm suite with the default debug verification, then check the optimized
+app in the actual launcher. Never interpret zero discovered tests as a pass.
 Unit tests should cover solar reference values, next-event selection, date/time-zone
 boundaries, reminder offsets, and active-place changes. UI tests should cover
 manual setup/permission denial and the main English/Hindi flows. Use physical

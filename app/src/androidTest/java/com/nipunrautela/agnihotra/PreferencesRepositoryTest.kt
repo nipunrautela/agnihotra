@@ -34,6 +34,7 @@ class PreferencesRepositoryTest {
         repository.setBoolean("keep_screen_on", false)
         repository.setBoolean("analytics", true)
         repository.setPreparation(10)
+        repository.setAlarmDuration(5)
         repository.dismissTravel(0)
     } }
 
@@ -78,5 +79,14 @@ class PreferencesRepositoryTest {
         assertEquals(0, repository.preferences.first().preparationMinutes)
         repository.setPreparation(100)
         assertEquals(60, repository.preferences.first().preparationMinutes)
+    } }
+
+    @Test fun alarmDurationPersistsAndStaysWithinSupportedBounds() { runBlocking {
+        repository.setAlarmDuration(17)
+        assertEquals(17, PreferencesRepository(context).preferences.first().alarmDurationMinutes)
+        repository.setAlarmDuration(0)
+        assertEquals(1, repository.preferences.first().alarmDurationMinutes)
+        repository.setAlarmDuration(100)
+        assertEquals(30, repository.preferences.first().alarmDurationMinutes)
     } }
 }

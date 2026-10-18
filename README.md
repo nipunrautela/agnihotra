@@ -12,7 +12,9 @@ and Hindi support and a modern, accessible interface.
   multiple saved places. Current-location places show an approximate area subtitle
   when a name is available.
 - A travel prompt when opening the app at least 25 km from home.
-- Preparation reminders and event alerts with a warm two-note chime and vibration.
+- Preparation reminders and event alarms with a warm two-note chime and vibration,
+  a five-minute default duration, and a configurable 1–30 minute limit. Stop a
+  ringing alarm from its notification.
 - A focus countdown, optional seconds, and 12/24-hour time formats.
 - Home-screen widgets that follow the selected place or stay on a saved place.
 - A monthly timetable with date selection, daily sharing, and CSV export.

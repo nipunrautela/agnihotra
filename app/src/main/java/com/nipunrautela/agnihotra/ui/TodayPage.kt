@@ -8,6 +8,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
@@ -15,6 +17,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -27,6 +31,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
@@ -78,7 +83,7 @@ fun TodayPage(state: AppState, calculator: SolarCalculator, onPlaces: () -> Unit
             Text(stringResource(R.string.today_heading), style = MaterialTheme.typography.headlineLarge)
             Text(stringResource(R.string.today_subtitle), color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(18.dp))
-            Row(Modifier.clickable(onClick = onPlaces).padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.heightIn(min = 48.dp).clickable(onClick = onPlaces).padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Outlined.Place, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.width(6.dp))
                 Column(Modifier.weight(1f)) {
@@ -100,16 +105,21 @@ fun TodayPage(state: AppState, calculator: SolarCalculator, onPlaces: () -> Unit
                 if (next != null) {
                     val seconds = Duration.between(now, next.instant).seconds.coerceAtLeast(0)
                     val spoken = countdownDescription(seconds, state.preferences.showSeconds)
-                    Text(if (state.preferences.showSeconds) stringResource(R.string.countdown_format, seconds / 3600, seconds / 60 % 60, seconds % 60)
+                    AdaptiveCountdown(if (state.preferences.showSeconds) stringResource(R.string.countdown_format, seconds / 3600, seconds / 60 % 60, seconds % 60)
                         else stringResource(R.string.countdown_minutes, seconds / 3600, seconds / 60 % 60),
-                        color = Color(0xFFFFF4E6), style = MaterialTheme.typography.displayMedium,
-                        fontSize = 38.sp, modifier = Modifier.clearAndSetSemantics { contentDescription = spoken })
+                        spoken)
                     Text(stringResource(R.string.time_remaining), color = Color(0xFFDDC9B7), style = MaterialTheme.typography.bodySmall)
                 }
                 val progress = if (day.sunrise != null && day.sunset != null)
                     (Duration.between(day.sunrise, now).seconds.toFloat() / Duration.between(day.sunrise, day.sunset).seconds).coerceIn(0f, 1f)
                     else null
+                Spacer(Modifier.height(12.dp))
                 SolarArc(progress)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(stringResource(R.string.sunrise), color = Color(0xFFDDC9B7), style = MaterialTheme.typography.labelSmall)
+                    Text(stringResource(R.string.sunset), color = Color(0xFFDDC9B7), style = MaterialTheme.typography.labelSmall)
+                }
+                Spacer(Modifier.height(16.dp))
                 if (next != null) {
                     val time = next.instant.formatTime(place.zone, use24Hour, locale, state.preferences.showSeconds)
                     Text(stringResource(if (next.instant.atZone(place.zone).toLocalDate() == date) R.string.event_at else R.string.tomorrow_at, time),
@@ -170,19 +180,41 @@ internal fun countdownDescription(seconds: Long, showSeconds: Boolean): String {
 }
 
 @Composable
-private fun SolarArc(progress: Float?) {
-    Canvas(Modifier.fillMaxWidth().height(112.dp).padding(top = 16.dp, bottom = 8.dp)) {
-        val radius = size.width * 0.43f
-        val centre = Offset(size.width / 2, size.height * 1.15f)
-        drawArc(Amber.copy(alpha = 0.4f), 202f, 136f, false,
-            topLeft = Offset(centre.x - radius, centre.y - radius), size = androidx.compose.ui.geometry.Size(radius * 2, radius * 2),
-            style = Stroke(width = 2.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 5.dp.toPx()))))
-        drawLine(Color(0xFFB79B82).copy(alpha = 0.4f), Offset(0f, size.height - 8.dp.toPx()), Offset(size.width, size.height - 8.dp.toPx()), 1.dp.toPx())
-        val angle = Math.toRadians(202.0 + 136.0 * (progress ?: 0.5f))
-        val sun = Offset(centre.x + radius * cos(angle).toFloat(), centre.y + radius * sin(angle).toFloat())
-        drawCircle(Amber.copy(alpha = 0.08f), 27.dp.toPx(), sun)
-        drawCircle(Amber.copy(alpha = 0.12f), 19.dp.toPx(), sun)
-        drawCircle(Amber, 9.dp.toPx(), sun)
+internal fun AdaptiveCountdown(text: String, spoken: String, modifier: Modifier = Modifier, textAlign: TextAlign = TextAlign.Start) {
+    BasicText(text, modifier.fillMaxWidth().testTag("countdown")
+        .clearAndSetSemantics { contentDescription = spoken },
+        style = MaterialTheme.typography.displayMedium.copy(color = Color(0xFFFFF4E6), fontFeatureSettings = "tnum", textAlign = textAlign),
+        maxLines = 1, autoSize = TextAutoSize.StepBased(minFontSize = 18.sp, maxFontSize = 38.sp))
+}
+
+@Composable
+internal fun SolarArc(progress: Float?) {
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        // Reserve the full glow at the top, bottom and both ends at every width.
+        // Drawing is clipped to its own measured region, never into adjacent text.
+        val chartHeight = (maxWidth / 2.6f).coerceIn(112.dp, 168.dp)
+        Canvas(Modifier.fillMaxWidth().height(chartHeight).clipToBounds().testTag("solar_arc")) {
+            val inset = 28.dp.toPx().coerceAtMost(size.width / 4)
+            val halfWidth = (size.width / 2 - inset).coerceAtLeast(0f)
+            val baseline = size.height - inset
+            val rise = (size.height - 2 * inset).coerceAtLeast(0f)
+            val arcSize = androidx.compose.ui.geometry.Size(halfWidth * 2, rise * 2)
+            val topLeft = Offset(inset, inset)
+            drawLine(Color(0xFFB79B82).copy(alpha = 0.3f), Offset(inset, baseline),
+                Offset(size.width - inset, baseline), 1.dp.toPx())
+            drawArc(Amber.copy(alpha = 0.32f), 180f, 180f, false, topLeft, arcSize,
+                style = Stroke(width = 1.5.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(3.dp.toPx(), 5.dp.toPx()))))
+            if (progress != null) {
+                val fraction = progress.coerceIn(0f, 1f)
+                drawArc(Amber.copy(alpha = 0.8f), 180f, 180f * fraction, false, topLeft, arcSize,
+                    style = Stroke(width = 2.dp.toPx()))
+                val angle = PI + PI * fraction
+                val sun = Offset(size.width / 2 + halfWidth * cos(angle).toFloat(), baseline + rise * sin(angle).toFloat())
+                drawCircle(Amber.copy(alpha = 0.07f), 26.dp.toPx(), sun)
+                drawCircle(Amber.copy(alpha = 0.14f), 17.dp.toPx(), sun)
+                drawCircle(Amber, 7.dp.toPx(), sun)
+            }
+        }
     }
 }
 

@@ -4,7 +4,7 @@ import android.os.Bundle
 import android.content.Intent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
@@ -17,7 +17,8 @@ import com.nipunrautela.agnihotra.ui.AppViewModel
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        // Bar transparency/cutout handling comes from the theme; avoid deprecated color setters.
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         useWidgetPlace(intent)
         setContent {
             val model: AppViewModel = viewModel(factory = object : ViewModelProvider.Factory {

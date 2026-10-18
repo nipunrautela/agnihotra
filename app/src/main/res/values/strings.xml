@@ -83,7 +83,12 @@
     <string name="minutes_before">%1$d min before</string>
     <string name="at_event_only">At event time only</string>
     <string name="sound">Chime</string>
-    <string name="chime_detail">Warm two-note chime. Notification volume, Do Not Disturb, and Android notification sound settings apply.</string>
+    <string name="chime_detail">Warm two-note chime, repeated like an alarm. Alarm volume and Do Not Disturb apply. The preview plays once.</string>
+    <string name="alarm_duration">Alarm duration</string>
+    <string name="alarm_duration_detail">Chime and vibration repeat until stopped or this time ends. Stop from the notification. Preparation alarms end at sunrise or sunset.</string>
+    <string name="alarm_minutes">%1$d min</string>
+    <string name="custom_alarm_duration">Custom duration · %1$d min</string>
+    <string name="stop_alarm">Stop alarm</string>
     <string name="preview_chime">Preview chime</string>
     <string name="chime_unavailable">The chime could not be played. Please try again.</string>
     <string name="vibration">Vibration</string>
@@ -107,7 +112,7 @@
     <string name="analytics_not_connected">Analytics is not connected in this development build.</string>
     <string name="privacy_body">Saved places stay on this device. Travel checks happen only while the app is open. No ads. No login.</string>
     <string name="about">About</string>
-    <string name="about_body">Agnihotra · 0.1.0\nDeveloped by Nipun Rautela</string>
+    <string name="about_body">Agnihotra · %1$s\nDeveloped by Nipun Rautela</string>
     <string name="widget_description">Sunrise and sunset for your selected place</string>
     <string name="widget_time_placeholder" translatable="false">—</string>
     <string name="widget_setup">Open the app to select a place.</string>

@@ -19,6 +19,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextAlign
 import com.nipunrautela.agnihotra.R
 import com.nipunrautela.agnihotra.core.*
 import java.time.Duration
@@ -50,11 +51,10 @@ fun FocusPage(state: AppState, calculator: SolarCalculator, onMantras: () -> Uni
             val spoken = if (eventReached) stringResource(R.string.event_now)
                 else countdownDescription(seconds, state.preferences.showSeconds)
             Spacer(Modifier.height(16.dp))
-            Text(if (eventReached) stringResource(R.string.event_now)
+            AdaptiveCountdown(if (eventReached) stringResource(R.string.event_now)
                 else if (state.preferences.showSeconds) stringResource(R.string.countdown_format, seconds / 3600, seconds / 60 % 60, seconds % 60)
                 else stringResource(R.string.countdown_minutes, seconds / 3600, seconds / 60 % 60),
-                style = MaterialTheme.typography.displayMedium, color = Color(0xFFFFF4E6),
-                modifier = Modifier.clearAndSetSemantics { contentDescription = spoken })
+                spoken, textAlign = TextAlign.Center)
             Text(event.instant.formatTime(place.zone, use24, locale, state.preferences.showSeconds),
                 color = Color(0xFFDDC9B7), modifier = Modifier.padding(top = 12.dp))
         } else Text(stringResource(R.string.no_solar_event), color = Color(0xFFF4E4D2))

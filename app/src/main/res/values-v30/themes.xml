@@ -1,0 +1,5 @@
+<resources>
+    <style name="Theme.Agnihotra" parent="Base.Theme.Agnihotra">
+        <item name="android:windowLayoutInDisplayCutoutMode">always</item>
+    </style>
+</resources>

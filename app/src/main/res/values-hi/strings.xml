@@ -79,7 +79,12 @@
     <string name="minutes_before">%1$d मिनट पहले</string>
     <string name="at_event_only">केवल निर्धारित समय पर</string>
     <string name="sound">ध्वनि</string>
-    <string name="chime_detail">दो सुरों की मधुर ध्वनि। सूचना की आवाज़, डू नॉट डिस्टर्ब और Android की सूचना ध्वनि सेटिंग्स लागू होती हैं।</string>
+    <string name="chime_detail">दो सुरों की मधुर ध्वनि अलार्म की तरह दोहराई जाती है। अलार्म की आवाज़ और डू नॉट डिस्टर्ब लागू होते हैं। पूर्वावलोकन में ध्वनि एक बार बजती है।</string>
+    <string name="alarm_duration">अलार्म की अवधि</string>
+    <string name="alarm_duration_detail">चालू ध्वनि और कंपन रोकने तक या चुनी गई अवधि तक दोहराए जाते हैं। सूचना से अलार्म रोकें। तैयारी का अलार्म सूर्योदय या सूर्यास्त पर रुकता है।</string>
+    <string name="alarm_minutes">%1$d मिनट</string>
+    <string name="custom_alarm_duration">अवधि चुनें · %1$d मिनट</string>
+    <string name="stop_alarm">अलार्म रोकें</string>
     <string name="preview_chime">ध्वनि सुनें</string>
     <string name="chime_unavailable">ध्वनि नहीं बज सकी। कृपया फिर कोशिश करें।</string>
     <string name="vibration">कंपन</string>
@@ -101,7 +106,7 @@
     <string name="analytics_not_connected">इस विकास संस्करण में विश्लेषण सेवा जुड़ी नहीं है।</string>
     <string name="privacy_body">सहेजे गए स्थान इस डिवाइस पर रहते हैं। यात्रा की जाँच केवल ऐप खुला होने पर होती है। न विज्ञापन, न लॉगिन।</string>
     <string name="about">परिचय</string>
-    <string name="about_body">अग्निहोत्र · 0.1.0\nनिर्माता: निपुण रौतेला</string>
+    <string name="about_body">अग्निहोत्र · %1$s\nनिर्माता: निपुण रौतेला</string>
     <string name="widget_description">चुने हुए स्थान का सूर्योदय और सूर्यास्त</string>
     <string name="widget_setup">स्थान चुनने के लिए ऐप खोलें।</string>
     <string name="widget_next_event">अगला: %1$s · %2$s</string>

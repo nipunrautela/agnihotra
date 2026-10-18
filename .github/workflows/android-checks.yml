@@ -35,3 +35,7 @@ jobs:
         run: '"$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37.0" "build-tools;36.0.0"'
       - name: Unit tests, lint, and debug build
         run: ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --no-daemon --console=plain
+      - name: Optimized release and 16 KB native layout
+        run: |
+          ./gradlew :app:assembleRelease :app:lintRelease --no-daemon --console=plain
+          python3 tools/verify_native_libraries.py app/build/outputs/apk/release/app-release-unsigned.apk

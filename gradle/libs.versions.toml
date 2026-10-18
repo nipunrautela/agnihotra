@@ -7,7 +7,8 @@ core = "1.17.0"
 activity = "1.12.1"
 lifecycle = "2.9.4"
 room = "2.8.5"
-datastore = "1.2.0"
+datastore = "1.2.1"
+fragment = "1.9.1"
 glance = "1.1.1"
 firebaseBom = "34.7.0"
 googleServices = "4.5.0"
@@ -33,6 +34,7 @@ androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
 androidx-datastore = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
 androidx-glance = { module = "androidx.glance:glance-appwidget", version.ref = "glance" }
+androidx-fragment = { module = "androidx.fragment:fragment", version.ref = "fragment" }
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
 firebase-analytics = { module = "com.google.firebase:firebase-analytics" }
 junit = { module = "junit:junit", version.ref = "junit" }

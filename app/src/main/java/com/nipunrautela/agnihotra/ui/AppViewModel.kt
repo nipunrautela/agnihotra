@@ -77,6 +77,7 @@ class AppViewModel(val graph: AppGraph, private val location: LocationService) :
     }
     fun string(key: String, value: String) = changeSettings { graph.preferences.setString(key, value) }
     fun preparation(minutes: Int) = changeSettings { graph.preferences.setPreparation(minutes) }
+    fun alarmDuration(minutes: Int) = changeSettings { graph.preferences.setAlarmDuration(minutes) }
     private fun changeSettings(change: suspend () -> Unit) = viewModelScope.launch {
         try { change() }
         catch (cancelled: CancellationException) { throw cancelled }

@@ -10,7 +10,7 @@ import com.nipunrautela.agnihotra.R
 /** Shared audio/attributes for the bundled default and its explicit Settings preview. */
 object ReminderChime {
     val attributes: AudioAttributes = AudioAttributes.Builder()
-        .setUsage(AudioAttributes.USAGE_NOTIFICATION_EVENT)
+        .setUsage(AudioAttributes.USAGE_ALARM)
         .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
         .build()
 
