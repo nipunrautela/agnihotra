@@ -3,9 +3,6 @@ package com.nipunrautela.agnihotra.reminders
 import android.app.*
 import android.content.Intent
 import android.content.pm.ServiceInfo
-import android.media.AudioFocusRequest
-import android.media.AudioManager
-import android.media.MediaPlayer
 import android.os.*
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -13,6 +10,7 @@ import androidx.core.app.ServiceCompat
 import com.nipunrautela.agnihotra.R
 import com.nipunrautela.agnihotra.appGraph
 import com.nipunrautela.agnihotra.audio.ReminderChime
+import com.nipunrautela.agnihotra.audio.AlarmChimePlayer
 import com.nipunrautela.agnihotra.core.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first
@@ -24,10 +22,10 @@ class ReminderAlarmService : Service() {
     private val handler = Handler(Looper.getMainLooper())
     private var session: Job? = null
     private var token: String? = null
-    private var player: MediaPlayer? = null
+    private var chime: AlarmChimePlayer? = null
+    private var systemSound = false
     private var vibrator: Vibrator? = null
     private var wakeLock: PowerManager.WakeLock? = null
-    private var focus: AudioFocusRequest? = null
     private var finishedNotification: Notification? = null
     private val expire = Runnable { finishAlarm(keepNotification = true) }
 
@@ -66,7 +64,11 @@ class ReminderAlarmService : Service() {
             .setSilent(true).setOngoing(true).setAutoCancel(false)
         try {
             ServiceCompat.startForeground(this, NOTIFICATION_ID, initial.build(),
-                if (Build.VERSION.SDK_INT >= 34) ServiceInfo.FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED else 0)
+                // Android 15 audio-focus hardening on some devices requires an audio-related
+                // FGS type; systemExempted alone can be running yet still be denied focus.
+                if (Build.VERSION.SDK_INT >= 34) ServiceInfo.FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED or
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK else if (Build.VERSION.SDK_INT >= 29)
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK else 0)
         } catch (error: RuntimeException) {
             android.util.Log.w("Agnihotra", "Alarm service unavailable: ${error.javaClass.simpleName}")
             finishAlarm()
@@ -104,35 +106,33 @@ class ReminderAlarmService : Service() {
                 handler.postDelayed(expire, duration)
                 val channel = appGraph.scheduler.ensureChannel(prefs)
                 if (prefs.sound && channel.sound != null) {
-                    val manager = getSystemService(AudioManager::class.java)
-                    val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
-                        .setAudioAttributes(ReminderChime.attributes)
-                        .setOnAudioFocusChangeListener({ change ->
-                            if (change < 0 && token == nextToken) finishAlarm(keepNotification = true)
-                        }, handler).build()
-                    focus = request
-                    if (manager.requestAudioFocus(request) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
-                        val created = MediaPlayer()
-                        player = created
-                        created.apply {
-                            setAudioAttributes(ReminderChime.attributes)
-                            setDataSource(this@ReminderAlarmService, channel.sound)
-                            isLooping = true
-                            setWakeMode(this@ReminderAlarmService, PowerManager.PARTIAL_WAKE_LOCK)
-                            setOnErrorListener { failed, _, _ ->
-                                if (player === failed && token == nextToken) finishAlarm(keepNotification = true)
-                                true
-                            }
-                            setOnPreparedListener { ready -> if (player === ready && token == nextToken) ready.start() }
-                            prepareAsync()
+                    chime = AlarmChimePlayer(this@ReminderAlarmService, onFocusDenied = {
+                        if (token == nextToken) {
+                            // Some Android 15 firmware rejects audio focus even for an audio FGS
+                            // started by an exact alarm. Let Android own repeating notification
+                            // playback, honoring the channel's sound, volume and DND controls.
+                            val fallback = appGraph.scheduler.notification(place, prefs, type, eventTime, preparation)
+                                .setOngoing(true).setAutoCancel(false).setOnlyAlertOnce(false)
+                                .setDeleteIntent(stop).addAction(0, textContext.getString(R.string.stop_alarm), stop)
+                                .build().apply { this.flags = this.flags or Notification.FLAG_INSISTENT }
+                            try {
+                                systemSound = true
+                                vibrator?.cancel()
+                                NotificationManagerCompat.from(this@ReminderAlarmService).notify(NOTIFICATION_ID, fallback)
+                            } catch (_: SecurityException) { finishAlarm() }
                         }
-                    }
+                    }).also { it.start(channel.sound) }
                 }
                 if (prefs.vibration && channel.shouldVibrate()) {
-                    @Suppress("DEPRECATION")
-                    vibrator = (if (Build.VERSION.SDK_INT >= 31) getSystemService(VibratorManager::class.java).defaultVibrator
-                        else getSystemService(Vibrator::class.java)).also {
-                        it.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 450, 400, 450, 2_000), 0), ReminderChime.attributes)
+                    try {
+                        @Suppress("DEPRECATION")
+                        vibrator = (if (Build.VERSION.SDK_INT >= 31) getSystemService(VibratorManager::class.java).defaultVibrator
+                            else getSystemService(Vibrator::class.java)).also {
+                            it.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 450, 400, 450, 2_000), 0), ReminderChime.attributes)
+                        }
+                    } catch (_: RuntimeException) {
+                        // Unavailable vibration must not tear down working alarm audio.
+                        android.util.Log.w("Agnihotra", "Alarm vibration unavailable; audio remains available")
                     }
                 }
                 // Changing the active place, disabling reminders or changing ringing options stops this session.
@@ -153,10 +153,12 @@ class ReminderAlarmService : Service() {
 
     private fun releasePlayback() {
         handler.removeCallbacks(expire)
+        // Removing the foreground notification cancels any system-owned repeating tone.
+        // A quiet completed reminder can then be posted without leaving alarm audio behind.
+        if (systemSound) { stopForeground(STOP_FOREGROUND_REMOVE); systemSound = false }
         session?.cancel(); session = null
-        player?.release(); player = null
+        chime?.stop(); chime = null
         vibrator?.cancel(); vibrator = null
-        focus?.let { getSystemService(AudioManager::class.java).abandonAudioFocusRequest(it) }; focus = null
         wakeLock?.let { if (it.isHeld) it.release() }; wakeLock = null
     }
 

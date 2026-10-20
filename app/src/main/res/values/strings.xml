@@ -91,6 +91,13 @@
     <string name="stop_alarm">Stop alarm</string>
     <string name="preview_chime">Preview chime</string>
     <string name="chime_unavailable">The chime could not be played. Please try again.</string>
+    <string name="alarm_volume_muted">Alarm volume is muted. Raise it in Android sound settings to hear the chime.</string>
+    <string name="alarm_channel_muted">Android has silenced this reminder channel. Enable its sound in reminder notification settings.</string>
+    <string name="reminder_sound_settings">Reminder notification settings</string>
+    <string name="alarm_volume_settings">Alarm volume settings</string>
+    <string name="background_alarm_settings">Background alarm settings</string>
+    <string name="background_alarm_help">Allow notifications and precise alarms above. If your phone restricts Agnihotra in the background, open App info → Battery and allow background activity or select Unrestricted. The wording varies by phone. These settings can help reminders run reliably; sound still follows your volume and Do Not Disturb settings.</string>
+    <string name="open_app_settings">Open app settings</string>
     <string name="vibration">Vibration</string>
     <string name="reminder_scope">Reminders use your selected place. Keep automatic date and time enabled on your phone.</string>
     <string name="notification_access_title">Allow notifications</string>

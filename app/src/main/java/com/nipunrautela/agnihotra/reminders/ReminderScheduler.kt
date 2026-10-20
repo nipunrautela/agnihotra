@@ -44,8 +44,6 @@ class ReminderScheduler(private val context: Context) {
             .putExtra(Settings.EXTRA_CHANNEL_ID, channelId(prefs))
     }
 
-    internal fun channelId(prefs: AppPreferences) = "agnihotra_${prefs.sound}_${prefs.vibration}"
-
     @Synchronized
     fun reschedule(place: SavedPlace?, prefs: AppPreferences) {
         PendingIntent.getBroadcast(context, 40, Intent(context, ReminderReceiver::class.java),
@@ -119,7 +117,10 @@ class ReminderScheduler(private val context: Context) {
     private fun openApp() = PendingIntent.getActivity(context, 0,
         Intent(context, MainActivity::class.java), flags)
 
-    companion object { private const val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE }
+    companion object {
+        private const val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        internal fun channelId(prefs: AppPreferences) = "agnihotra_${prefs.sound}_${prefs.vibration}"
+    }
 }
 
 class ReminderReceiver : BroadcastReceiver() {

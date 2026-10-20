@@ -1,6 +1,8 @@
 package com.nipunrautela.agnihotra
 
 import androidx.compose.runtime.*
+import android.content.res.Configuration
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -54,5 +56,37 @@ class SettingsAccessibilityTest {
         compose.onNodeWithText("Custom duration · 10 min").performScrollTo().performClick()
         compose.onNodeWithText("Cancel").performClick()
         compose.onNodeWithText("10 min").assertIsSelected()
+    }
+
+    @Test fun soundControlsRemainAccessibleInHindiWithLargeText() {
+        var openedNotifications = false
+        compose.setContent {
+            val configuration = Configuration(LocalConfiguration.current).apply { fontScale = 2f }
+            CompositionLocalProvider(LocalConfiguration provides configuration) {
+                val prefs = AppPreferences(language = "hi", theme = "dark")
+                AgnihotraAppearance(prefs) {
+                    SettingsPage(prefs, false, true, true, onBoolean = { _, _ -> }, onString = { _, _ -> },
+                        onPreparation = {}, onNotifications = { openedNotifications = true },
+                        onExactAlarms = {}, onPrivacy = {})
+                }
+            }
+        }
+        compose.onNodeWithText("रिमाइंडर की सूचना सेटिंग").performScrollTo().assertIsDisplayed().performClick()
+        compose.runOnIdle { org.junit.Assert.assertTrue(openedNotifications) }
+        compose.onNodeWithText("अलार्म की आवाज़ की सेटिंग").performScrollTo().assertIsDisplayed().assertHasClickAction()
+    }
+
+    @Test fun backgroundAlarmHelpExplainsSystemSettingsAndCanBeDismissed() {
+        compose.setContent {
+            val prefs = AppPreferences(language = "en", theme = "light")
+            AgnihotraAppearance(prefs) {
+                SettingsPage(prefs, false, true, true, onBoolean = { _, _ -> }, onString = { _, _ -> },
+                    onPreparation = {}, onNotifications = {}, onExactAlarms = {}, onPrivacy = {})
+            }
+        }
+        compose.onNodeWithText("Background alarm settings").performScrollTo().performClick()
+        compose.onNodeWithText("Open app settings").assertHasClickAction()
+        compose.onNodeWithText("Cancel").performClick()
+        compose.onNodeWithText("Open app settings").assertDoesNotExist()
     }
 }

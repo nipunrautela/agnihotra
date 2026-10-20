@@ -87,6 +87,13 @@
     <string name="stop_alarm">अलार्म रोकें</string>
     <string name="preview_chime">ध्वनि सुनें</string>
     <string name="chime_unavailable">ध्वनि नहीं बज सकी। कृपया फिर कोशिश करें।</string>
+    <string name="alarm_volume_muted">अलार्म की आवाज़ बंद है। ध्वनि सुनने के लिए Android की ध्वनि सेटिंग में आवाज़ बढ़ाएँ।</string>
+    <string name="alarm_channel_muted">Android में इस रिमाइंडर चैनल की ध्वनि बंद है। रिमाइंडर की सूचना सेटिंग में ध्वनि चालू करें।</string>
+    <string name="reminder_sound_settings">रिमाइंडर की सूचना सेटिंग</string>
+    <string name="alarm_volume_settings">अलार्म की आवाज़ की सेटिंग</string>
+    <string name="background_alarm_settings">बैकग्राउंड अलार्म सेटिंग</string>
+    <string name="background_alarm_help">ऊपर सूचनाओं और सटीक अलार्म की अनुमति दें। यदि आपका फ़ोन Agnihotra को बैकग्राउंड में रोकता है, तो ऐप की जानकारी → बैटरी खोलें और बैकग्राउंड गतिविधि की अनुमति दें या अप्रतिबंधित चुनें। विकल्पों के नाम फ़ोन के अनुसार बदल सकते हैं। ये सेटिंग रिमाइंडर को भरोसेमंद ढंग से चलाने में मदद कर सकती हैं। ध्वनि पर आवाज़ और डू नॉट डिस्टर्ब सेटिंग लागू रहेंगी।</string>
+    <string name="open_app_settings">ऐप की सेटिंग खोलें</string>
     <string name="vibration">कंपन</string>
     <string name="reminder_scope">रिमाइंडर आपके चुने हुए स्थान के अनुसार हैं। फ़ोन में स्वचालित तिथि और समय चालू रखें।</string>
     <string name="notification_access_title">सूचनाओं की अनुमति दें</string>

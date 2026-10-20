@@ -156,4 +156,23 @@ class ReminderAlarmTest {
         assertFalse(audioIsPlaying())
         assertTrue(manager.activeNotifications.any { it.id == ReminderAlarmService.NOTIFICATION_ID })
     }
+
+    @Test fun disablingSoundDuringAnAlarmReleasesPlayback() {
+        startImminentAlarm()
+        waitFor(5_000) { audioIsPlaying() }
+        runBlocking { graph.preferences.setBoolean("sound", false) }
+        waitFor(5_000) { !audioIsPlaying() && ringingNotification() == null }
+    }
+
+    @Test fun vibrationOnlyReminderDoesNotStartAudio() {
+        runBlocking {
+            graph.preferences.setBoolean("sound", false)
+            graph.preferences.setBoolean("vibration", true)
+        }
+        startImminentAlarm()
+        SystemClock.sleep(1_000)
+        assertFalse("An intentionally silent alarm must not use a sound fallback", audioIsPlaying())
+        ringingNotification()!!.actions.single().actionIntent.send()
+        waitFor(5_000) { ringingNotification() == null }
+    }
 }

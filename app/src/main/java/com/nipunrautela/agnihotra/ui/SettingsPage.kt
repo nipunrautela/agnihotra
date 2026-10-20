@@ -22,6 +22,13 @@ import com.nipunrautela.agnihotra.audio.ChimePreviewPlayer
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.LifecycleResumeEffect
+import com.nipunrautela.agnihotra.reminders.ReminderScheduler
+import android.media.AudioManager
+import android.app.NotificationManager
+import android.content.Intent
+import android.provider.Settings
+import android.net.Uri
 
 @Composable
 fun SettingsPage(prefs: AppPreferences, analyticsConfigured: Boolean, notificationsAllowed: Boolean,
@@ -32,19 +39,33 @@ fun SettingsPage(prefs: AppPreferences, analyticsConfigured: Boolean, notificati
     var customPreparation by remember { mutableStateOf(false) }
     var customMinutes by remember(prefs.preparationMinutes) { mutableFloatStateOf(prefs.preparationMinutes.toFloat()) }
     var reminderHelp by remember { mutableStateOf(false) }
+    var backgroundHelp by remember { mutableStateOf(false) }
     var durationDialog by remember { mutableStateOf(false) }
     var durationMinutes by remember(prefs.alarmDurationMinutes) { mutableFloatStateOf(prefs.alarmDurationMinutes.toFloat()) }
     var chimeUnavailable by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val audio = remember(context) { context.getSystemService(AudioManager::class.java) }
+    var alarmMuted by remember { mutableStateOf(audio.getStreamVolume(AudioManager.STREAM_ALARM) == 0) }
+    var channelMuted by remember { mutableStateOf(false) }
     val versionName = remember(context) {
         runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull().orEmpty()
     }
     val preview = remember { ChimePreviewPlayer(context.applicationContext) }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     DisposableEffect(preview, lifecycle) {
-        val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_STOP) preview.stop() }
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_STOP) preview.stop()
+            if (event == Lifecycle.Event.ON_RESUME) alarmMuted = audio.getStreamVolume(AudioManager.STREAM_ALARM) == 0
+        }
         lifecycle.addObserver(observer)
         onDispose { lifecycle.removeObserver(observer); preview.stop() }
+    }
+    // Re-read after returning from Android's channel controls; do not override user sound choices.
+    LifecycleResumeEffect(prefs.sound, prefs.vibration) {
+        val channel = context.getSystemService(NotificationManager::class.java)
+            .getNotificationChannel(ReminderScheduler.channelId(prefs))
+        channelMuted = channel != null && channel.sound == null
+        onPauseOrDispose { }
     }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
         SectionHeading(R.string.reminders)
@@ -65,8 +86,18 @@ fun SettingsPage(prefs: AppPreferences, analyticsConfigured: Boolean, notificati
         SettingsSwitch(R.string.sound, prefs.sound) { onBoolean("sound", it) }
         Text(stringResource(R.string.chime_detail), style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
-        OutlinedButton(onClick = { chimeUnavailable = !preview.play(); if (!chimeUnavailable) onChimePreview() }) { Text(stringResource(R.string.preview_chime)) }
+        OutlinedButton(onClick = {
+            alarmMuted = audio.getStreamVolume(AudioManager.STREAM_ALARM) == 0
+            chimeUnavailable = !preview.play()
+            if (!chimeUnavailable) onChimePreview()
+        }) { Text(stringResource(R.string.preview_chime)) }
         if (chimeUnavailable) Text(stringResource(R.string.chime_unavailable), color = MaterialTheme.colorScheme.error)
+        if (prefs.sound && alarmMuted) Text(stringResource(R.string.alarm_volume_muted), color = MaterialTheme.colorScheme.error)
+        if (prefs.sound && channelMuted) Text(stringResource(R.string.alarm_channel_muted), color = MaterialTheme.colorScheme.error)
+        TextButton(onClick = onNotifications) { Text(stringResource(R.string.reminder_sound_settings)) }
+        TextButton(onClick = { context.startActivity(Intent(Settings.ACTION_SOUND_SETTINGS)) }) {
+            Text(stringResource(R.string.alarm_volume_settings))
+        }
         SettingsSwitch(R.string.vibration, prefs.vibration) { onBoolean("vibration", it) }
         Text(stringResource(R.string.alarm_duration), style = MaterialTheme.typography.titleSmall)
         Text(stringResource(R.string.alarm_duration_detail), style = MaterialTheme.typography.bodySmall,
@@ -77,6 +108,7 @@ fun SettingsPage(prefs: AppPreferences, analyticsConfigured: Boolean, notificati
             Text(stringResource(R.string.custom_alarm_duration, prefs.alarmDurationMinutes))
         }
         TextButton(onClick = { reminderHelp = true }) { Text(stringResource(R.string.reminder_help_title)) }
+        TextButton(onClick = { backgroundHelp = true }) { Text(stringResource(R.string.background_alarm_settings)) }
         HorizontalDivider()
         SectionHeading(R.string.appearance)
         Text(stringResource(R.string.theme), style = MaterialTheme.typography.titleSmall)
@@ -131,6 +163,15 @@ fun SettingsPage(prefs: AppPreferences, analyticsConfigured: Boolean, notificati
     if (reminderHelp) AlertDialog(onDismissRequest = { reminderHelp = false },
         title = { Text(stringResource(R.string.reminder_help_title)) }, text = { Text(stringResource(R.string.reminder_help_detail)) },
         confirmButton = { TextButton(onClick = { reminderHelp = false }) { Text(stringResource(R.string.got_it)) } })
+    if (backgroundHelp) AlertDialog(onDismissRequest = { backgroundHelp = false },
+        title = { Text(stringResource(R.string.background_alarm_settings)) },
+        text = { Text(stringResource(R.string.background_alarm_help)) },
+        confirmButton = { TextButton(onClick = {
+            backgroundHelp = false
+            context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                Uri.fromParts("package", context.packageName, null)))
+        }) { Text(stringResource(R.string.open_app_settings)) } },
+        dismissButton = { TextButton(onClick = { backgroundHelp = false }) { Text(stringResource(R.string.cancel)) } })
 }
 
 @Composable private fun SectionHeading(label: Int) {
