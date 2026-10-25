@@ -36,8 +36,15 @@ Firebase Analytics still requires that local project configuration.
   prompts and do not silently replace the home location.
 - Provide preparation reminders and event-time alerts with chime and vibration.
 - Include a home-screen widget, monthly timetable, and reviewed mantra text.
-  Audio recordings are deferred until an approved source is available; do not
-  add placeholder playback controls or unlicensed recordings.
+  Mantra recordings are deferred until an approved source is available; do not
+  add placeholder playback controls or unlicensed recordings. Post-practice music
+  supports user-selected audio and the separate `ReleaseConfiguration.practiceMusic`
+  catalog. Two owner-supplied Om recordings are bundled. The center navigation
+  action starts a timed audio session immediately with saved preferences (30 minutes
+  by default), looping audio until the timer ends or the user stops it. Keep this
+  user-chosen session length separate from the sunrise/sunset offering time.
+  The event-countdown flow still supports offering confirmation and an optional
+  quiet pause afterward; do not invent a fixed mandatory ritual duration.
 - Timetable export uses Android's document picker without storage permissions.
   CSVs identify the place, coordinates, time zone, date, and event times. Preserve
   Unicode and quote cells safely; sharing happens only on an explicit user action.

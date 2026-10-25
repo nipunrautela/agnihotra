@@ -43,14 +43,21 @@ class ReminderAlarmTest {
         val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
         fun findSwitch(node: AccessibilityNodeInfo?): AccessibilityNodeInfo? {
             if (node == null) return null
-            if (node.isCheckable && node.className?.toString()?.contains("Switch") == true) return node
+            // Newer Android Settings uses a checkable Compose row instead of a Switch view.
+            if (node.isCheckable && node.isEnabled &&
+                (node.className?.toString()?.contains("Switch") == true || node.isClickable)) return node
             for (i in 0 until node.childCount) findSwitch(node.getChild(i))?.let { return it }
             return null
+        }
+        fun hasAppLabel(node: AccessibilityNodeInfo?): Boolean {
+            if (node == null) return false
+            if (node.text?.toString() == "Agnihotra verification") return true
+            return (0 until node.childCount).any { hasAppLabel(node.getChild(it)) }
         }
         try {
             waitFor(8_000) {
                 val root = automation.rootInActiveWindow
-                root?.findAccessibilityNodeInfosByText("Agnihotra verification")?.isNotEmpty() == true && findSwitch(root) != null
+                hasAppLabel(root) && findSwitch(root) != null
             }
             val toggle = findSwitch(automation.rootInActiveWindow)!!
             if (!toggle.isChecked) {

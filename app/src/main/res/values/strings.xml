@@ -9,7 +9,7 @@
     <string name="sunrise">Sunrise</string>
     <string name="sunset">Sunset</string>
     <string name="welcome_title">Make space for\na daily ritual.</string>
-    <string name="welcome_body">Sunrise, sunset, and a little time to prepare. Find your timings wherever you call home.</string>
+    <string name="welcome_body">Sunrise and sunset times, reminders, and mantras for your place.</string>
     <string name="choose_location">Choose your location</string>
     <string name="location_privacy">Your saved places stay on this device. Location access is used only while the app is open.</string>
     <string name="today_heading">A moment of stillness</string>
@@ -83,9 +83,9 @@
     <string name="minutes_before">%1$d min before</string>
     <string name="at_event_only">At event time only</string>
     <string name="sound">Chime</string>
-    <string name="chime_detail">Warm two-note chime, repeated like an alarm. Alarm volume and Do Not Disturb apply. The preview plays once.</string>
+    <string name="chime_detail">Two-note chime.</string>
     <string name="alarm_duration">Alarm duration</string>
-    <string name="alarm_duration_detail">Chime and vibration repeat until stopped or this time ends. Stop from the notification. Preparation alarms end at sunrise or sunset.</string>
+    <string name="alarm_duration_detail">Stops automatically after this time.</string>
     <string name="alarm_minutes">%1$d min</string>
     <string name="custom_alarm_duration">Custom duration · %1$d min</string>
     <string name="stop_alarm">Stop alarm</string>
@@ -99,7 +99,7 @@
     <string name="background_alarm_help">Allow notifications and precise alarms above. If your phone restricts Agnihotra in the background, open App info → Battery and allow background activity or select Unrestricted. The wording varies by phone. These settings can help reminders run reliably; sound still follows your volume and Do Not Disturb settings.</string>
     <string name="open_app_settings">Open app settings</string>
     <string name="vibration">Vibration</string>
-    <string name="reminder_scope">Reminders use your selected place. Keep automatic date and time enabled on your phone.</string>
+    <string name="reminder_scope">For the selected place.</string>
     <string name="notification_access_title">Allow notifications</string>
     <string name="notification_access_body">Notifications are needed for chime and vibration reminders.</string>
     <string name="exact_access_title">Allow alarms and reminders</string>
@@ -115,7 +115,7 @@
     <string name="hindi" translatable="false">हिन्दी</string>
     <string name="privacy">Privacy</string>
     <string name="usage_analytics">Usage analytics</string>
-    <string name="analytics_body">Help improve the app with Firebase usage analytics. Enabled by default; turn it off at any time. Includes approximate city-level reporting from your connection and app-instance identifiers. Custom events exclude saved locations and mantra activity.</string>
+    <string name="analytics_body">Optional usage data, including app-instance identifiers. No saved places or practice activity.</string>
     <string name="analytics_not_connected">Analytics is not connected in this development build.</string>
     <string name="privacy_body">Saved places stay on this device. Travel checks happen only while the app is open. No ads. No login.</string>
     <string name="about">About</string>
@@ -125,7 +125,7 @@
     <string name="widget_setup">Open the app to select a place.</string>
     <string name="widget_next_event">Next: %1$s · %2$s</string>
     <string name="widget_heading">Timings at a glance</string>
-    <string name="widget_body">Add the Agnihotra widget from your home screen’s widget picker.</string>
+    <string name="widget_body">Today’s timings on your home screen.</string>
     <string name="reminder_channel">Agnihotra reminders</string>
     <string name="reminder_channel_description">Preparation and sunrise/sunset alerts</string>
     <string name="preparation_notification">Prepare for %1$s</string>
@@ -136,7 +136,7 @@
     <string name="time_format_24">24-hour</string>
     <string name="show_seconds">Show seconds</string>
     <string name="keep_screen_on">Keep the screen awake</string>
-    <string name="keep_screen_on_detail">Keep the countdown and mantra screens awake while they are visible. Other screens follow your phone settings.</string>
+    <string name="keep_screen_on_detail">During countdowns and mantra reading.</string>
     <string name="custom_preparation">Custom · %1$d minutes</string>
     <string name="apply">Apply</string>
     <string name="got_it">Got it</string>
@@ -144,11 +144,35 @@
     <string name="reminder_help_title">How reminders work</string>
     <string name="reminder_help_detail">Preparation reminders happen before the event; event alerts stay at the calculated sunrise or sunset. Allow notifications and precise alarms, and check the notification channel settings if sound is muted. Reminders cannot ring while the phone is powered off or the app is force-stopped. Open the app again after a force-stop. Manufacturer battery settings and Do Not Disturb can affect delivery or sound.</string>
     <string name="reminders_need_access">Reminders are selected, but notification or alarm access needs attention.</string>
-    <string name="focus_mode">Focus countdown</string>
+    <string name="focus_mode">Event countdown</string>
     <string name="read_mantras">Read the mantras</string>
     <string name="countdown_minutes">%1$02d : %2$02d</string>
     <string name="event_now">It’s time</string>
     <string name="focus_note">The countdown uses your phone’s clock. Your reminder settings continue to apply.</string>
+    <string name="practice_start">Start Agnihotra</string>
+    <string name="practice_duration_note">Recite the mantra once and make two offerings at the event time.</string>
+    <string name="practice_quiet_choice">Quiet pause after offerings</string>
+    <string name="practice_no_wait">No wait</string>
+    <plurals name="practice_minutes"><item quantity="one">%d minute</item><item quantity="other">%d minutes</item></plurals>
+    <string name="practice_music">Music after Agnihotra</string>
+    <string name="practice_bundle_pending">Bundled music will be available once recordings are added. You can choose your own audio now.</string>
+    <string name="practice_choose_audio">Choose from device</string>
+    <string name="practice_chosen_audio">Chosen audio file</string>
+    <string name="practice_remove_audio">Remove audio</string>
+    <string name="practice_auto_music">Music after offerings</string>
+    <string name="practice_music_foreground">Music continues with the screen off. Stop it here or from the notification.</string>
+    <string name="practice_offering_guidance">Confirm after both offerings.</string>
+    <string name="practice_offerings_done">Offerings complete</string>
+    <string name="practice_quiet">Quiet sitting</string>
+    <string name="practice_quiet_guidance">Let the fire subside naturally.</string>
+    <string name="practice_complete">Ready for meditation</string>
+    <string name="practice_loading_music">Loading music…</string>
+    <string name="practice_pause_music">Pause music</string>
+    <string name="practice_play_music">Play music</string>
+    <string name="practice_music_failed">Audio unavailable. Choose another track in session options.</string>
+    <string name="practice_finish">Finish session</string>
+    <string name="practice_end">End session</string>
+    <string name="practice_hide_mantra">Hide mantra</string>
     <string name="this_month">This month</string>
     <string name="choose_date">Choose a date</string>
     <string name="export_month">Export month · CSV</string>
@@ -170,8 +194,8 @@
     <string name="transliteration">Transliteration</string>
     <string name="large_text">Larger text</string>
     <string name="copy_mantra">Copy mantra</string>
-    <string name="sunrise_mantra_guidance">For morning Agnihotra, at the sunrise time for your selected place.</string>
-    <string name="sunset_mantra_guidance">For evening Agnihotra, at the sunset time for your selected place.</string>
+    <string name="sunrise_mantra_guidance">At sunrise for your selected place.</string>
+    <string name="sunset_mantra_guidance">At sunset for your selected place.</string>
     <string name="mantra_meaning">“Idaṃ na mama” means “this is not mine”, expressing the offering without a claim of ownership.</string>
     <string name="recordings_pending">Audio recordings will be available after an approved source is added. You can read the text offline now.</string>
     <string name="audio_unavailable">This recording could not be played.</string>
@@ -185,7 +209,7 @@
     <string name="privacy_analytics_title">Optional usage analytics</string>
     <string name="privacy_analytics_detail">Firebase usage analytics is enabled by default, with opt-out in Settings. When enabled, Firebase receives usage and device information, app-instance identifiers, and approximate city/region derived from your internet connection; this is not fully anonymous. Advertising features are disabled. Custom events exclude saved coordinates, place names, and mantra activity. The app does not collect birth dates or age categories. Event retention is 2 months and user-data retention is 14 months, with reset on new activity off; aggregated reports may remain longer. Opting out stops future collection and does not delete data already received.</string>
     <string name="privacy_control_title">Sharing is your choice</string>
-    <string name="privacy_control_detail">Timetable export and sharing happen only when you request them. An exported file includes the selected place, its coordinates, time zone, dates, and event times. The destination app or storage service handles what you share according to its own policies.</string>
+    <string name="privacy_control_detail">Timetable export and sharing happen only when you request them. An exported file includes the selected place, its coordinates, time zone, dates, and event times. The destination app or storage service handles what you share according to its own policies. Music plays locally from bundled tracks or a file you choose. Device files are chosen through Android’s picker; the app keeps their references on this device and does not upload audio or log practice sessions. A cloud file provider may need connectivity. Removing the music selection releases the app’s access to that file.</string>
     <string name="privacy_full_policy">Open full privacy policy</string>
     <string name="contact_support">Contact support</string>
     <string name="add_widget">Add home-screen widget</string>
@@ -215,4 +239,26 @@
         <item quantity="other">%d seconds</item>
     </plurals>
     <string name="approximate_area">Approximate area: %1$s</string>
+    <string name="om_chanting_1">Om chanting · 1</string>
+    <string name="om_chanting_2">Om chanting · 2</string>
+    <string name="session_silent">Silent session</string>
+    <string name="session_options">Session options</string>
+    <string name="session_next_options">Next session options</string>
+    <string name="session_duration">Session length</string>
+    <string name="session_custom_duration">Custom · %d min</string>
+    <string name="session_music">Music</string>
+    <string name="session_done">Done</string>
+    <string name="session_running">Agnihotra session</string>
+    <string name="session_finished">Session ended</string>
+    <string name="session_paused">Music paused</string>
+    <string name="session_timer">%1$02d:%2$02d</string>
+    <string name="session_timer_note">Your chosen session length. Offerings remain tied to sunrise and sunset.</string>
+    <string name="session_notification_channel">Session music</string>
+    <string name="session_open">Open current session</string>
+    <string name="alarm_options">Alarm options</string>
+    <string name="reading_options">Reading</string>
+    <string name="timing_details">About these timings</string>
+    <string name="mantra_details">Meaning and guidance</string>
+    <string name="practice_prepare">Begin countdown</string>
+    <string name="session_ready">Ready when you are</string>
 </resources>

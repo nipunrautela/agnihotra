@@ -69,6 +69,7 @@ fun WelcomeScreen(onChoose: () -> Unit) {
 fun TodayPage(state: AppState, calculator: SolarCalculator, onPlaces: () -> Unit, onReminders: () -> Unit,
     remindersReady: Boolean = true, onFocus: () -> Unit = {}, onMantras: () -> Unit = {}) {
     val place = state.activePlace ?: return
+    var timingInfo by remember { mutableStateOf(false) }
     val now by rememberCurrentInstant()
     val use24Hour = LocalContext.current.use24HourTime(state.preferences.timeFormat)
     KeepScreenAwake(state.preferences.keepScreenOn)
@@ -81,7 +82,6 @@ fun TodayPage(state: AppState, calculator: SolarCalculator, onPlaces: () -> Unit
         verticalArrangement = Arrangement.spacedBy(22.dp)) {
         Column {
             Text(stringResource(R.string.today_heading), style = MaterialTheme.typography.headlineLarge)
-            Text(stringResource(R.string.today_subtitle), color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(18.dp))
             Row(Modifier.heightIn(min = 48.dp).clickable(onClick = onPlaces).padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Outlined.Place, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
@@ -135,36 +135,37 @@ fun TodayPage(state: AppState, calculator: SolarCalculator, onPlaces: () -> Unit
             Text(stringResource(R.string.daily_times), style = MaterialTheme.typography.titleMedium)
             if (LocalConfiguration.current.fontScale >= 1.3f || LocalConfiguration.current.screenWidthDp < 360) {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    EventCard(SolarEventType.SUNRISE, day.sunrise, place.zone, now, locale, use24Hour, Modifier.fillMaxWidth())
-                    EventCard(SolarEventType.SUNSET, day.sunset, place.zone, now, locale, use24Hour, Modifier.fillMaxWidth())
+                    EventCard(SolarEventType.SUNRISE, day.sunrise, place.zone, now, locale, use24Hour, state.preferences.showSeconds, Modifier.fillMaxWidth())
+                    EventCard(SolarEventType.SUNSET, day.sunset, place.zone, now, locale, use24Hour, state.preferences.showSeconds, Modifier.fillMaxWidth())
                 }
             } else Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                EventCard(SolarEventType.SUNRISE, day.sunrise, place.zone, now, locale, use24Hour, Modifier.weight(1f))
-                EventCard(SolarEventType.SUNSET, day.sunset, place.zone, now, locale, use24Hour, Modifier.weight(1f))
+                EventCard(SolarEventType.SUNRISE, day.sunrise, place.zone, now, locale, use24Hour, state.preferences.showSeconds, Modifier.weight(1f))
+                EventCard(SolarEventType.SUNSET, day.sunset, place.zone, now, locale, use24Hour, state.preferences.showSeconds, Modifier.weight(1f))
             }
         }
-        Surface(shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.secondaryContainer) {
-            Column(Modifier.padding(20.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Icon(Icons.Outlined.NotificationsNone, null)
+        Surface(onClick = onReminders, shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.secondaryContainer) {
+            Row(Modifier.fillMaxWidth().padding(20.dp), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Icon(Icons.Outlined.NotificationsNone, null)
+                Column(Modifier.weight(1f)) {
                     Text(stringResource(R.string.reminder_heading), style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(when {
+                        !(state.preferences.sunriseReminder || state.preferences.sunsetReminder) -> R.string.reminders_off
+                        !remindersReady -> R.string.reminders_need_access
+                        else -> R.string.reminders_on
+                    }), style = MaterialTheme.typography.bodyMedium)
                 }
-                Spacer(Modifier.height(8.dp))
-                Text(stringResource(when {
-                    !(state.preferences.sunriseReminder || state.preferences.sunsetReminder) -> R.string.reminders_off
-                    !remindersReady -> R.string.reminders_need_access
-                    else -> R.string.reminders_on
-                }),
-                    style = MaterialTheme.typography.bodyMedium)
-                TextButton(onClick = onReminders, contentPadding = PaddingValues(top = 12.dp, bottom = 0.dp)) {
-                    Text(stringResource(R.string.manage_reminders)); Icon(Icons.AutoMirrored.Outlined.ArrowForward, null, Modifier.padding(start = 6.dp).size(16.dp))
-                }
+                Icon(Icons.AutoMirrored.Outlined.ArrowForward, null)
             }
         }
         OutlinedButton(onClick = onMantras, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.read_mantras)) }
-        Text(stringResource(R.string.calculation_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        TextButton(onClick = { timingInfo = true }) { Text(stringResource(R.string.timing_details)) }
         Spacer(Modifier.height(8.dp))
     }
+    if (timingInfo) AlertDialog(onDismissRequest = { timingInfo = false }, title = { Text(stringResource(R.string.timing_details)) },
+        text = { Text(stringResource(R.string.calculation_note)) },
+        confirmButton = { TextButton(onClick = { timingInfo = false }) { Text(stringResource(R.string.got_it)) } })
+
 }
 
 @Composable
@@ -219,13 +220,13 @@ internal fun SolarArc(progress: Float?) {
 }
 
 @Composable
-private fun EventCard(type: SolarEventType, time: Instant?, zone: ZoneId, now: Instant, locale: Locale, use24Hour: Boolean, modifier: Modifier) {
+private fun EventCard(type: SolarEventType, time: Instant?, zone: ZoneId, now: Instant, locale: Locale, use24Hour: Boolean, showSeconds: Boolean, modifier: Modifier) {
     Surface(modifier, shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)) {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Icon(if (type == SolarEventType.SUNRISE) Icons.Outlined.WbSunny else Icons.Outlined.WbTwilight,
                 null, tint = MaterialTheme.colorScheme.primary)
             Text(stringResource(if (type == SolarEventType.SUNRISE) R.string.sunrise else R.string.sunset), style = MaterialTheme.typography.labelLarge)
-            Text(time?.formatTime(zone, use24Hour, locale) ?: "—",
+            Text(time?.formatTime(zone, use24Hour, locale, showSeconds) ?: "—",
                 style = MaterialTheme.typography.titleLarge, fontFamily = FontFamily.Serif)
             Text(stringResource(if (time == null) R.string.event_unavailable else if (time <= now) R.string.past_event else R.string.upcoming_event),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

@@ -30,6 +30,14 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.res.painterResource
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -41,17 +49,18 @@ import com.nipunrautela.agnihotra.data.AppPreferences
 import com.nipunrautela.agnihotra.widget.AgnihotraWidgetReceiver
 import com.nipunrautela.agnihotra.widget.WidgetPinReceiver
 import java.util.Locale
+import com.nipunrautela.agnihotra.audio.PracticePlaybackService
 
 enum class Page(val label: Int) {
     TODAY(R.string.today), TIMETABLE(R.string.timetable), MANTRAS(R.string.mantras),
     PLACES(R.string.places), SETTINGS(R.string.settings),
-    PRIVACY(R.string.privacy_details), FOCUS(R.string.focus_mode),
+    PRIVACY(R.string.privacy_details), FOCUS(R.string.focus_mode), PRACTICE(R.string.session_running),
 }
 
 @Composable
-fun AgnihotraApp(model: AppViewModel) {
+fun AgnihotraApp(model: AppViewModel, sessionRequest: Int = 0) {
     val state by model.state.collectAsStateWithLifecycle()
-    AgnihotraAppearance(state.preferences) { AppContent(model, state) }
+    AgnihotraAppearance(state.preferences) { AppContent(model, state, sessionRequest) }
 }
 
 @Composable
@@ -77,10 +86,13 @@ fun AgnihotraAppearance(prefs: AppPreferences, content: @Composable () -> Unit) 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AppContent(model: AppViewModel, state: AppState) {
+private fun AppContent(model: AppViewModel, state: AppState, sessionRequest: Int) {
     val context = LocalContext.current
     var pageName by rememberSaveable { mutableStateOf(Page.TODAY.name) }
     val page = Page.valueOf(pageName)
+    var sessionOptions by rememberSaveable { mutableStateOf(false) }
+    val practice by PracticePlaybackService.state.collectAsStateWithLifecycle()
+    LaunchedEffect(sessionRequest) { if (sessionRequest > 0) pageName = Page.PRACTICE.name }
     var addPlace by rememberSaveable { mutableStateOf(false) }
     var editingId by rememberSaveable { mutableStateOf<String?>(null) }
     val editing = state.places.firstOrNull { it.id == editingId }
@@ -175,10 +187,23 @@ private fun AppContent(model: AppViewModel, state: AppState) {
             )
         },
         bottomBar = {
-            if (state.places.isNotEmpty() && page !in listOf(Page.SETTINGS, Page.PRIVACY, Page.FOCUS)) NavigationBar(
+            if (!state.loading && page !in listOf(Page.SETTINGS, Page.PRIVACY, Page.FOCUS)) NavigationBar(
                 containerColor = MaterialTheme.colorScheme.surface,
                 windowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)) {
-                listOf(Page.TODAY, Page.TIMETABLE, Page.MANTRAS, Page.PLACES).forEach { destination ->
+                listOf(Page.TODAY, Page.TIMETABLE, Page.PRACTICE, Page.MANTRAS, Page.PLACES).forEach { destination ->
+                    if (destination == Page.PRACTICE) {
+                        val description = stringResource(if (practice.active) R.string.session_open else R.string.practice_start)
+                        Box(Modifier.weight(1f).heightIn(min = 80.dp), contentAlignment = Alignment.Center) {
+                            FloatingActionButton(onClick = {
+                                if (!practice.active) PracticePlaybackService.start(context, state.preferences)
+                                pageName = Page.PRACTICE.name
+                            }, shape = CircleShape, modifier = Modifier.size(64.dp).testTag("start_agnihotra")
+                                .semantics { contentDescription = description }) {
+                                Image(painterResource(R.drawable.ic_agnihotra), null, Modifier.size(56.dp).clip(CircleShape))
+                            }
+                        }
+                        return@forEach
+                    }
                     val icon = when (destination) {
                         Page.TODAY -> Icons.Outlined.WbSunny
                         Page.TIMETABLE -> Icons.Outlined.CalendarMonth
@@ -202,8 +227,8 @@ private fun AppContent(model: AppViewModel, state: AppState) {
                     notificationAccess, exactAccess, model::boolean, model::string, model::preparation,
                     onNotifications = {
                         val activity = context.activityOrNull()
-                        val canRequest = !state.preferences.notificationAsked || (activity != null &&
-                            ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.POST_NOTIFICATIONS))
+                        val canRequest = Build.VERSION.SDK_INT >= 33 && (!state.preferences.notificationAsked || (activity != null &&
+                            ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.POST_NOTIFICATIONS)))
                         if (Build.VERSION.SDK_INT >= 33 && !model.graph.scheduler.hasNotificationAccess() && canRequest) {
                             model.boolean("notification_asked", true)
                             notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -220,9 +245,13 @@ private fun AppContent(model: AppViewModel, state: AppState) {
                         Unit
                     }) else null,
                     onChimePreview = { model.graph.analytics.record(UsageEvent.CHIME_PREVIEWED) },
-                    onAlarmDuration = model::alarmDuration)
-                state.places.isEmpty() -> WelcomeScreen(showAdd)
-                page == Page.FOCUS -> FocusPage(state, model.graph.calculator) { pageName = Page.MANTRAS.name }
+                    onAlarmDuration = model::alarmDuration, onSessionOptions = { sessionOptions = true })
+                page == Page.PRACTICE -> TimedPracticePage(state.preferences, state.activePlace?.name,
+                    onOptions = { sessionOptions = true }, onMantras = { pageName = Page.MANTRAS.name })
+                state.places.isEmpty() && page in listOf(Page.TODAY, Page.FOCUS) -> WelcomeScreen(showAdd)
+                page == Page.FOCUS -> FocusPage(state, model.graph.calculator, model::boolean,
+                    model::practiceQuiet, model::practiceMusic, model::bundledPracticeMusic, onDuration = model::practiceDuration,
+                    onTimedSession = { pageName = Page.PRACTICE.name })
                 page == Page.TODAY -> TodayPage(state, model.graph.calculator,
                     onPlaces = { pageName = Page.PLACES.name }, onReminders = { pageName = Page.SETTINGS.name },
                     remindersReady = exactAccess && notificationAccess,
@@ -236,6 +265,8 @@ private fun AppContent(model: AppViewModel, state: AppState) {
             }
         }
     }
+    if (sessionOptions) SessionOptionsSheet(state.preferences, model::practiceDuration, model::practiceQuiet,
+        model::boolean, model::practiceMusic, model::bundledPracticeMusic, onDismiss = { sessionOptions = false })
     if (addPlace && !state.loading) PlaceDialog(model, editing, locate,
         onDismiss = { if (!savingPlace) addPlace = false }, onSave = { place, makeHome -> model.save(place, makeHome) })
     travel?.let { suggestion ->

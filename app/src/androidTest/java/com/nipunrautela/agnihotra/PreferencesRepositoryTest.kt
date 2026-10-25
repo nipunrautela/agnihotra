@@ -36,6 +36,9 @@ class PreferencesRepositoryTest {
         repository.setPreparation(10)
         repository.setAlarmDuration(5)
         repository.dismissTravel(0)
+        repository.setPracticeQuiet(0)
+        repository.setPracticeDuration(30)
+        repository.setPracticeMusic(null)
     } }
 
     @Test fun selectedPlaceCanChangeWithoutMovingHome() { runBlocking {
@@ -88,5 +91,30 @@ class PreferencesRepositoryTest {
         assertEquals(1, repository.preferences.first().alarmDurationMinutes)
         repository.setAlarmDuration(100)
         assertEquals(30, repository.preferences.first().alarmDurationMinutes)
+    } }
+
+    @Test fun practicePreferencesPersistAndRemovingMusicDisablesAutomaticPlay() { runBlocking {
+        repository.setPracticeQuiet(15)
+        repository.setBoolean("practice_music_enabled", true)
+        val restored = PreferencesRepository(context).preferences.first()
+        assertEquals(15, restored.practiceQuietMinutes)
+        assertTrue(restored.practiceMusicEnabled)
+        repository.setPracticeMusic(null)
+        val cleared = repository.preferences.first()
+        assertFalse(cleared.practiceMusicEnabled)
+        assertNull(cleared.practiceMusicSource)
+        assertNull(cleared.practiceMusicName)
+    } }
+
+    @Test fun sessionLengthAndBundledTrackPersist() { runBlocking {
+        repository.setPracticeDuration(45)
+        repository.setBundledPracticeMusic("om-2")
+        val restored = PreferencesRepository(context).preferences.first()
+        assertEquals(45, restored.practiceDurationMinutes)
+        assertEquals("bundle:om-2", restored.practiceMusicSource)
+        repository.setPracticeDuration(0)
+        assertEquals(1, repository.preferences.first().practiceDurationMinutes)
+        repository.setPracticeDuration(999)
+        assertEquals(120, repository.preferences.first().practiceDurationMinutes)
     } }
 }

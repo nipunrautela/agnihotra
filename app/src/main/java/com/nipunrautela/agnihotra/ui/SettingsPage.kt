@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 import com.nipunrautela.agnihotra.R
 import com.nipunrautela.agnihotra.data.AppPreferences
+import com.nipunrautela.agnihotra.integrations.musicTitle
 import com.nipunrautela.agnihotra.audio.ChimePreviewPlayer
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -35,7 +36,8 @@ fun SettingsPage(prefs: AppPreferences, analyticsConfigured: Boolean, notificati
     exactAllowed: Boolean, onBoolean: (String, Boolean) -> Unit, onString: (String, String) -> Unit,
     onPreparation: (Int) -> Unit, onNotifications: () -> Unit, onExactAlarms: () -> Unit,
     onPrivacy: () -> Unit, onAddWidget: (() -> Unit)? = null,
-    onChimePreview: () -> Unit = {}, onAlarmDuration: (Int) -> Unit = {}) {
+    onChimePreview: () -> Unit = {}, onAlarmDuration: (Int) -> Unit = {}, onSessionOptions: () -> Unit = {}) {
+    var alarmOptions by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
     var customPreparation by remember { mutableStateOf(false) }
     var customMinutes by remember(prefs.preparationMinutes) { mutableFloatStateOf(prefs.preparationMinutes.toFloat()) }
     var reminderHelp by remember { mutableStateOf(false) }
@@ -76,6 +78,11 @@ fun SettingsPage(prefs: AppPreferences, analyticsConfigured: Boolean, notificati
             if (!notificationsAllowed) PermissionCard(R.string.notification_access_title, R.string.notification_access_body, onNotifications)
             if (!exactAllowed) PermissionCard(R.string.exact_access_title, R.string.exact_access_body, onExactAlarms)
         }
+        TextButton(onClick = { alarmOptions = !alarmOptions }) {
+            Text(stringResource(R.string.alarm_options))
+            Text(if (alarmOptions) "  −" else "  +")
+        }
+        if (alarmOptions) {
         Text(stringResource(R.string.preparation_time), style = MaterialTheme.typography.titleSmall)
         ChoiceRow(listOf(0, 5, 10, 15, 30), prefs.preparationMinutes, label = {
             if (it == 0) stringResource(R.string.at_event_only) else stringResource(R.string.minutes_before, it)
@@ -109,6 +116,17 @@ fun SettingsPage(prefs: AppPreferences, analyticsConfigured: Boolean, notificati
         }
         TextButton(onClick = { reminderHelp = true }) { Text(stringResource(R.string.reminder_help_title)) }
         TextButton(onClick = { backgroundHelp = true }) { Text(stringResource(R.string.background_alarm_settings)) }
+        }
+        HorizontalDivider()
+        SectionHeading(R.string.session_options)
+        TextButton(onClick = onSessionOptions) {
+            Text(stringResource(R.string.alarm_minutes, prefs.practiceDurationMinutes) + " · " +
+                if (prefs.practiceMusicEnabled) prefs.musicTitle(context) else stringResource(R.string.session_silent))
+        }
+        SettingsSwitch(R.string.keep_screen_on, prefs.keepScreenOn) { onBoolean("keep_screen_on", it) }
+        SectionHeading(R.string.reading_options)
+        SettingsSwitch(R.string.transliteration, prefs.showTransliteration) { onBoolean("transliteration", it) }
+        SettingsSwitch(R.string.large_text, prefs.largeMantraText) { onBoolean("large_mantra_text", it) }
         HorizontalDivider()
         SectionHeading(R.string.appearance)
         Text(stringResource(R.string.theme), style = MaterialTheme.typography.titleSmall)
@@ -124,19 +142,14 @@ fun SettingsPage(prefs: AppPreferences, analyticsConfigured: Boolean, notificati
             stringResource(when (it) { "12" -> R.string.time_format_12; "24" -> R.string.time_format_24; else -> R.string.system })
         }, onSelect = { onString("time_format", it) })
         SettingsSwitch(R.string.show_seconds, prefs.showSeconds) { onBoolean("show_seconds", it) }
-        SettingsSwitch(R.string.keep_screen_on, prefs.keepScreenOn) { onBoolean("keep_screen_on", it) }
-        Text(stringResource(R.string.keep_screen_on_detail), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         HorizontalDivider()
         SectionHeading(R.string.privacy)
         SettingsSwitch(R.string.usage_analytics, prefs.analytics) { onBoolean("analytics", it) }
         Text(stringResource(R.string.analytics_body),
             style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        if (prefs.analytics && !analyticsConfigured) Text(stringResource(R.string.analytics_not_connected), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(stringResource(R.string.privacy_body), style = MaterialTheme.typography.bodyMedium)
         TextButton(onClick = onPrivacy) { Text(stringResource(R.string.privacy_details)) }
         HorizontalDivider()
         SectionHeading(R.string.widget_heading)
-        Text(stringResource(R.string.widget_body), style = MaterialTheme.typography.bodyMedium)
         onAddWidget?.let { add -> FilledTonalButton(onClick = add) { Text(stringResource(R.string.add_widget)) } }
         SectionHeading(R.string.about)
         Text(stringResource(R.string.about_body, versionName), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)

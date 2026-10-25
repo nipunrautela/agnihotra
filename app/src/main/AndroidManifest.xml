@@ -50,6 +50,8 @@
         <receiver android:name=".reminders.ReminderReceiver" android:exported="false" />
         <service android:name=".reminders.ReminderAlarmService" android:exported="false"
             android:foregroundServiceType="systemExempted|mediaPlayback" />
+        <service android:name=".audio.PracticePlaybackService" android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
         <receiver android:name=".widget.WidgetPinReceiver" android:exported="false" />
         <receiver android:name=".reminders.RescheduleReceiver" android:exported="false">
             <intent-filter>

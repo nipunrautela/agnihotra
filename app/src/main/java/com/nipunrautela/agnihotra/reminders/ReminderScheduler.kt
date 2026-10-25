@@ -103,7 +103,7 @@ class ReminderScheduler(private val context: Context) {
         eventTime: Instant, preparation: Boolean): NotificationCompat.Builder {
         val textContext = context.withAppLanguage(prefs.language)
         val eventName = textContext.getString(if (type == SolarEventType.SUNRISE) R.string.sunrise else R.string.sunset)
-        val time = eventTime.atZone(place.zone).format(timeFormatter(context.use24HourTime(prefs.timeFormat), textContext.resources.configuration.locales[0]))
+        val time = eventTime.atZone(place.zone).format(timeFormatter(context.use24HourTime(prefs.timeFormat), textContext.resources.configuration.locales[0], prefs.showSeconds))
         val title = textContext.getString(if (preparation) R.string.preparation_notification else R.string.event_notification, eventName)
         return NotificationCompat.Builder(context, channelId(prefs))
             .setSmallIcon(R.drawable.ic_notification)

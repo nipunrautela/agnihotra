@@ -35,6 +35,7 @@ import com.nipunrautela.agnihotra.integrations.ReleaseConfiguration
 @Composable
 fun MantrasPage(prefs: AppPreferences = AppPreferences(), onBoolean: (String, Boolean) -> Unit = { _, _ -> }) {
     val context = LocalContext.current
+    var guidance by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
     val uriHandler = LocalUriHandler.current
     val audio = remember { MantraAudioPlayer(context.applicationContext) }
     val playback by audio.state.collectAsStateWithLifecycle()
@@ -46,27 +47,27 @@ fun MantrasPage(prefs: AppPreferences = AppPreferences(), onBoolean: (String, Bo
         onDispose { lifecycle.removeObserver(observer); audio.release() }
     }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
-        Text(stringResource(R.string.mantras_subtitle), color = MaterialTheme.colorScheme.onSurfaceVariant)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip(prefs.showTransliteration, onClick = { onBoolean("transliteration", !prefs.showTransliteration) }, label = { Text(stringResource(R.string.transliteration)) })
             FilterChip(prefs.largeMantraText, onClick = { onBoolean("large_mantra_text", !prefs.largeMantraText) }, label = { Text(stringResource(R.string.large_text)) })
         }
         SolarEventType.entries.forEach { event ->
-            MantraCard(event, prefs, playback.event == event && playback.playing) { audio.toggle(event) }
+            MantraCard(event, prefs, playback.event == event && playback.playing, onAudio = { audio.toggle(event) })
         }
         if (playback.failed) Text(stringResource(R.string.audio_unavailable), color = MaterialTheme.colorScheme.error)
-        if (ReleaseConfiguration.mantraRecordings.isEmpty()) Text(stringResource(R.string.recordings_pending),
-            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        TextButton(onClick = { guidance = !guidance }) { Text(stringResource(R.string.mantra_details)) }
+        if (guidance) {
         Text(stringResource(R.string.mantra_meaning), style = MaterialTheme.typography.bodyMedium)
         Text(stringResource(R.string.mantra_note), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         TextButton(onClick = { uriHandler.openUri("https://www.agnihotra.org/how-to-perform-agnihotra/") }) {
             Text(stringResource(R.string.mantra_source))
         }
+        }
         Spacer(Modifier.height(12.dp))
     }
 }
 
-@Composable private fun MantraCard(event: SolarEventType, prefs: AppPreferences, playing: Boolean, onAudio: () -> Unit) {
+@Composable internal fun MantraCard(event: SolarEventType, prefs: AppPreferences, playing: Boolean, onAudio: () -> Unit, showAudio: Boolean = true) {
     val context = LocalContext.current
     val morning = event == SolarEventType.SUNRISE
     val title = stringResource(if (morning) R.string.sunrise_mantra else R.string.sunset_mantra)
@@ -90,7 +91,7 @@ fun MantrasPage(prefs: AppPreferences = AppPreferences(), onBoolean: (String, Bo
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 SelectionContainer { Text(latin, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
-            if (ReleaseConfiguration.mantraRecordings.containsKey(event)) FilledTonalButton(onClick = onAudio) {
+            if (showAudio && ReleaseConfiguration.mantraRecordings.containsKey(event)) FilledTonalButton(onClick = onAudio) {
                 Icon(if (playing) Icons.Outlined.Pause else Icons.Outlined.PlayArrow, null)
                 Spacer(Modifier.width(8.dp))
                 Text(stringResource(if (playing) R.string.pause_recording else R.string.play_recording))

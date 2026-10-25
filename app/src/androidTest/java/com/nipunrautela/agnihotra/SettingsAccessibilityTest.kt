@@ -51,6 +51,7 @@ class SettingsAccessibilityTest {
                     onAlarmDuration = { prefs = prefs.copy(alarmDurationMinutes = it) })
             }
         }
+        compose.onNodeWithText("Alarm options").performScrollTo().performClick()
         compose.onNodeWithText("5 min").performScrollTo().assertIsSelected()
         compose.onNodeWithText("10 min").performClick().assertIsSelected()
         compose.onNodeWithText("Custom duration · 10 min").performScrollTo().performClick()
@@ -71,6 +72,7 @@ class SettingsAccessibilityTest {
                 }
             }
         }
+        compose.onNodeWithText("अलार्म के विकल्प").performScrollTo().performClick()
         compose.onNodeWithText("रिमाइंडर की सूचना सेटिंग").performScrollTo().assertIsDisplayed().performClick()
         compose.runOnIdle { org.junit.Assert.assertTrue(openedNotifications) }
         compose.onNodeWithText("अलार्म की आवाज़ की सेटिंग").performScrollTo().assertIsDisplayed().assertHasClickAction()
@@ -84,6 +86,7 @@ class SettingsAccessibilityTest {
                     onPreparation = {}, onNotifications = {}, onExactAlarms = {}, onPrivacy = {})
             }
         }
+        compose.onNodeWithText("Alarm options").performScrollTo().performClick()
         compose.onNodeWithText("Background alarm settings").performScrollTo().performClick()
         compose.onNodeWithText("Open app settings").assertHasClickAction()
         compose.onNodeWithText("Cancel").performClick()

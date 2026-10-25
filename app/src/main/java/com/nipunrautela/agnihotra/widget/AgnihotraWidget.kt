@@ -39,7 +39,7 @@ class AgnihotraWidget : GlanceAppWidget() {
         val place = allPlaces.firstOrNull { it.id == (selectedId ?: prefs.activePlaceId) }
         val times = place?.let { graph.calculator.calculate(LocalDate.now(it.zone), it.coordinates, it.zone) }
         val locale = textContext.resources.configuration.locales[0]
-        val formatter = timeFormatter(context.use24HourTime(prefs.timeFormat), locale)
+        val formatter = timeFormatter(context.use24HourTime(prefs.timeFormat), locale, prefs.showSeconds)
         val date = place?.let { LocalDate.now(it.zone).format(DateTimeFormatter.ofPattern("EEE, d MMM", locale)) }
         val sunrise = times?.sunrise?.atZone(place!!.zone)?.format(formatter) ?: "—"
         val sunset = times?.sunset?.atZone(place!!.zone)?.format(formatter) ?: "—"
@@ -113,6 +113,17 @@ class AgnihotraWidget : GlanceAppWidget() {
 
     @Composable private fun EventTile(label: String, time: String, icon: Int, foreground: Color, secondary: Color,
         background: Int, wide: Boolean, roomy: Boolean, dense: Boolean, modifier: GlanceModifier) {
+        val context = LocalContext.current
+        val baseSize = if (dense) 16f else if (wide) 23f else 18f
+        val outerPadding = if (dense) 10f else if (roomy) 18f else 14f
+        val tilePadding = if (dense) 4f else if (roomy) 12f else 8f
+        val availableDp = ((LocalSize.current.width.value - 2 * outerPadding - 8) / 2 - 2 * tilePadding).coerceAtLeast(1f)
+        val density = context.resources.displayMetrics.density
+        val paint = android.graphics.Paint().apply {
+            textSize = baseSize * density * context.resources.configuration.fontScale
+            typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
+        }
+        val timeSize = minOf(baseSize, baseSize * availableDp * density / paint.measureText(time).coerceAtLeast(1f)).sp
         Column(modifier.background(ImageProvider(background)).cornerRadius(16.dp).padding(if (dense) 4.dp else if (roomy) 12.dp else 8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Image(ImageProvider(icon), contentDescription = if (dense) label else null,
@@ -123,7 +134,7 @@ class AgnihotraWidget : GlanceAppWidget() {
                 }
             }
             Spacer(GlanceModifier.height(if (dense) 2.dp else 4.dp))
-            Text(time, style = TextStyle(color = ColorProvider(foreground), fontSize = if (dense) 16.sp else if (wide) 23.sp else 18.sp,
+            Text(time, style = TextStyle(color = ColorProvider(foreground), fontSize = timeSize,
                 fontWeight = FontWeight.Medium), maxLines = 1)
         }
     }

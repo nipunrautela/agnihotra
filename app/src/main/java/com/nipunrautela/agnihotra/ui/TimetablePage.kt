@@ -77,7 +77,7 @@ fun TimetablePage(place: SavedPlace?, calculator: SolarCalculator, prefs: AppPre
     }
     val locale = LocalConfiguration.current.locales[0]
     val use24 = context.use24HourTime(prefs.timeFormat)
-    val timeFormat = remember(locale, use24) { timeFormatter(use24, locale) }
+    val timeFormat = remember(locale, use24, prefs.showSeconds) { timeFormatter(use24, locale, prefs.showSeconds) }
     Column(Modifier.fillMaxSize().padding(horizontal = 24.dp)) {
         Text(stringResource(R.string.timetable_subtitle), color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(place.name, style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp))

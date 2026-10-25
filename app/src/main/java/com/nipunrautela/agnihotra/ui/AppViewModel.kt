@@ -78,6 +78,10 @@ class AppViewModel(val graph: AppGraph, private val location: LocationService) :
     fun string(key: String, value: String) = changeSettings { graph.preferences.setString(key, value) }
     fun preparation(minutes: Int) = changeSettings { graph.preferences.setPreparation(minutes) }
     fun alarmDuration(minutes: Int) = changeSettings { graph.preferences.setAlarmDuration(minutes) }
+    fun practiceQuiet(minutes: Int) = changeSettings { graph.preferences.setPracticeQuiet(minutes) }
+    fun practiceDuration(minutes: Int) = changeSettings { graph.preferences.setPracticeDuration(minutes) }
+    fun practiceMusic(uri: android.net.Uri?) = changeSettings { graph.preferences.setPracticeMusic(uri) }
+    fun bundledPracticeMusic(id: String) = changeSettings { graph.preferences.setBundledPracticeMusic(id) }
     private fun changeSettings(change: suspend () -> Unit) = viewModelScope.launch {
         try { change() }
         catch (cancelled: CancellationException) { throw cancelled }

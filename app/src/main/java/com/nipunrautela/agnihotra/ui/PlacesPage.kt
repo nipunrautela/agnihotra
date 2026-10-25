@@ -75,11 +75,11 @@ fun PlacesPage(state: AppState, onAdd: () -> Unit, onSelect: (String) -> Unit, o
                     Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
                         Column(Modifier.weight(1f)) {
                             Text(stringResource(R.string.sunrise), style = MaterialTheme.typography.labelSmall)
-                            Text(day.sunrise?.formatTime(place.zone, use24, locale) ?: "—", style = MaterialTheme.typography.bodyLarge)
+                            Text(day.sunrise?.formatTime(place.zone, use24, locale, state.preferences.showSeconds) ?: "—", style = MaterialTheme.typography.bodyLarge)
                         }
                         Column(Modifier.weight(1f)) {
                             Text(stringResource(R.string.sunset), style = MaterialTheme.typography.labelSmall)
-                            Text(day.sunset?.formatTime(place.zone, use24, locale) ?: "—", style = MaterialTheme.typography.bodyLarge)
+                            Text(day.sunset?.formatTime(place.zone, use24, locale, state.preferences.showSeconds) ?: "—", style = MaterialTheme.typography.bodyLarge)
                         }
                     }
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {

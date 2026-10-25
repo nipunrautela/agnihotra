@@ -29,6 +29,7 @@ class WidgetRenderingTest {
         graph.database.clearAllTables()
         graph.preferences.setBoolean("analytics", false)
         graph.preferences.setString("time_format", "12")
+        graph.preferences.setBoolean("show_seconds", true)
         graph.places.save(SavedPlace("widget-fixture", "Current location", 28.6139, 77.209,
             areaName = "Connaught Place, New Delhi", fromCurrentLocation = true))
         graph.preferences.repairSelection(graph.places.all())
@@ -88,6 +89,10 @@ class WidgetRenderingTest {
                     assertTrue("Text below widget: ${view.text}", bounds.bottom <= height + 1)
                     assertTrue("Text outside widget width", bounds.left >= 0 && bounds.right <= width + 1)
                     assertTrue("Clipped text line: ${view.text}", view.height >= view.lineHeight - 2)
+                    if (view.text.contains(Regex("\\d:\\d{2}:\\d{2}"))) {
+                        val layout = requireNotNull(view.layout)
+                        assertEquals("Truncated event time: ${view.text}", 0, layout.getEllipsisCount(0))
+                    }
                     labels += view.text.toString()
                 } else if (view is ViewGroup) (0 until view.childCount).forEach { inspect(view.getChildAt(it)) }
             }
