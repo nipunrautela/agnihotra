@@ -108,10 +108,12 @@ class ReminderAlarmTest {
                 val target = Instant.now().plusSeconds(12)
                 val date = target.atZone(ZoneOffset.UTC).toLocalDate()
                 val hour = target.atZone(ZoneOffset.UTC).toLocalTime().toSecondOfDay() / 3600.0
-                var longitude = (6 - hour) * 15
+                fun wrapLongitude(value: Double) = ((value + 180) % 360 + 360) % 360 - 180
+                // UTC evenings can put this synthetic sunrise across the date line.
+                var longitude = wrapLongitude((6 - hour) * 15)
                 repeat(4) {
                     val event = graph.calculator.calculate(date, Coordinates(0.0, longitude), ZoneOffset.UTC).sunrise!!
-                    longitude += Duration.between(target, event).toMillis() / 240_000.0
+                    longitude = wrapLongitude(longitude + Duration.between(target, event).toMillis() / 240_000.0)
                 }
                 val place = SavedPlace("alarm-fixture", "Alarm test", 0.0, longitude, "UTC")
                 val computed = graph.calculator.calculate(date, place.coordinates, place.zone).sunrise!!
