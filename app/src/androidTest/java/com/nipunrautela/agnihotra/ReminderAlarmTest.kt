@@ -88,7 +88,6 @@ class ReminderAlarmTest {
         graph.preferences.setBoolean("sound", true)
         graph.preferences.setBoolean("vibration", false)
         graph.preferences.setPreparation(0)
-        graph.preferences.setAlarmDuration(1)
         manager.cancelAll()
     }
 
@@ -96,7 +95,6 @@ class ReminderAlarmTest {
         graph.preferences.setBoolean("sunrise_reminder", false)
         context.stopService(Intent(context, ReminderAlarmService::class.java))
         manager.cancelAll()
-        graph.preferences.setAlarmDuration(5)
         graph.preferences.setBoolean("vibration", true)
         graph.preferences.setPreparation(10)
         Unit
@@ -144,24 +142,27 @@ class ReminderAlarmTest {
     private fun waitFor(timeout: Long, predicate: () -> Boolean) {
         val end = SystemClock.elapsedRealtime() + timeout
         while (!predicate() && SystemClock.elapsedRealtime() < end) SystemClock.sleep(250)
-        assertTrue("Condition not met within $timeout ms", predicate())
+        if (!predicate()) fail("Condition not met within $timeout ms; audio=${audioIsPlaying()}; " +
+            "actions=${ringingNotification()?.actions?.map { it.title }}; " +
+            shell("dumpsys activity services ${context.packageName}"))
     }
 
-    @Test fun alarmLoopsBeyondOneChimeAndNotificationStopReleasesPlayback() {
+    @Test fun alarmRepeatsChimeAndNotificationStopReleasesPlayback() {
         startImminentAlarm()
         waitFor(5_000) { audioIsPlaying() }
         SystemClock.sleep(6_000) // The original single chime lasts only 2.8 seconds.
         assertTrue("Alarm must still be playing after two chime lengths", audioIsPlaying())
         val notification = ringingNotification()!!
         assertTrue(notification.flags and Notification.FLAG_ONGOING_EVENT != 0)
+        assertEquals(0, notification.flags and Notification.FLAG_INSISTENT)
         notification.actions.single().actionIntent.send()
         waitFor(5_000) { !audioIsPlaying() && ringingNotification() == null }
     }
 
-    @Test fun selectedOneMinuteDurationStopsAutomaticallyAndLeavesAQuietReminder() {
+    @Test fun fiveChimesStopAutomaticallyAndLeaveAQuietReminder() {
         startImminentAlarm()
         waitFor(5_000) { audioIsPlaying() }
-        waitFor(65_000) { ringingNotification() == null }
+        waitFor(22_000) { ringingNotification() == null }
         assertFalse(audioIsPlaying())
         assertTrue(manager.activeNotifications.any { it.id == ReminderAlarmService.NOTIFICATION_ID })
     }

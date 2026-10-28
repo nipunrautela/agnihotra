@@ -13,6 +13,7 @@ import wave
 
 SAMPLE_RATE = 44_100
 DURATION_SECONDS = 2.8
+PEAK_LEVEL = 0.95
 OUTPUT = Path(__file__).resolve().parents[1] / "app/src/main/res/raw/agnihotra_chime.wav"
 
 
@@ -37,7 +38,7 @@ def main() -> None:
         tail = min(1.0, (DURATION_SECONDS - t) / 0.15)
         samples.append(value * math.sin(tail * math.pi / 2) ** 2)
     peak = max(abs(value) for value in samples)
-    pcm = array("h", (round(value / peak * 0.55 * 32767) for value in samples))
+    pcm = array("h", (round(value / peak * PEAK_LEVEL * 32767) for value in samples))
     if sys.byteorder != "little":
         pcm.byteswap()
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
@@ -46,7 +47,7 @@ def main() -> None:
         audio.setsampwidth(2)
         audio.setframerate(SAMPLE_RATE)
         audio.writeframes(pcm.tobytes())
-    print(f"Generated {OUTPUT.name}: {DURATION_SECONDS}s, mono PCM16, peak 55%")
+    print(f"Generated {OUTPUT.name}: {DURATION_SECONDS}s, mono PCM16, peak {PEAK_LEVEL:.0%}")
 
 
 if __name__ == "__main__":

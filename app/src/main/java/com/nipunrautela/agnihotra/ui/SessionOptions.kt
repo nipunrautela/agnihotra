@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.nipunrautela.agnihotra.R
@@ -26,7 +27,7 @@ import kotlin.math.roundToInt
 @Composable
 fun SessionOptionsSheet(prefs: AppPreferences, onDuration: (Int) -> Unit, onQuiet: (Int) -> Unit,
     onBoolean: (String, Boolean) -> Unit, onMusic: (Uri?) -> Unit, onBundle: (String) -> Unit,
-    onDismiss: () -> Unit, showQuiet: Boolean = false) {
+    onDismiss: () -> Unit, showQuiet: Boolean = false, forNextSession: Boolean = false) {
     var custom by remember { mutableStateOf(false) }
     var minutes by remember(prefs.practiceDurationMinutes) { mutableFloatStateOf(prefs.practiceDurationMinutes.toFloat()) }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -37,9 +38,11 @@ fun SessionOptionsSheet(prefs: AppPreferences, onDuration: (Int) -> Unit, onQuie
         // Dialog windows have their own Android context; reapply the in-app locale and text scale.
         CompositionLocalProvider(LocalDensity provides contentDensity) {
             AgnihotraAppearance(prefs) {
-                Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp),
+                Column(Modifier.fillMaxWidth().testTag("session_options_sheet").verticalScroll(rememberScrollState()).padding(horizontal = 24.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(stringResource(R.string.session_options), style = MaterialTheme.typography.headlineSmall)
+                    Text(stringResource(if (forNextSession) R.string.session_next_options else R.string.session_options), style = MaterialTheme.typography.headlineSmall)
+                    if (forNextSession) Text(stringResource(R.string.session_next_note), style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.session_timer_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(stringResource(R.string.session_duration), style = MaterialTheme.typography.titleMedium)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf(15, 30, 45, 60).forEach { duration ->
@@ -69,7 +72,7 @@ fun SessionOptionsSheet(prefs: AppPreferences, onDuration: (Int) -> Unit, onQuie
                         Row(Modifier.fillMaxWidth().heightIn(min = 52.dp)
                             .selectable(selected, role = Role.RadioButton, onClick = { onBundle(track.id); onBoolean("practice_music_enabled", true) }), verticalAlignment = Alignment.CenterVertically) {
                             RadioButton(selected, onClick = null)
-                            Text(stringResource(track.titleResource), Modifier.padding(start = 12.dp))
+                            Text(stringResource(track.titleResource), Modifier.weight(1f).padding(start = 12.dp), style = MaterialTheme.typography.bodyLarge)
                         }
                     }
                     if (prefs.practiceMusicSource?.startsWith("content:") == true) {

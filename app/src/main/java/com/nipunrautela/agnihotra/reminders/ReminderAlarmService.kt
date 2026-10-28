@@ -99,7 +99,7 @@ class ReminderAlarmService : Service() {
                     .addAction(0, textContext.getString(R.string.stop_alarm), stop).build()
                 try { NotificationManagerCompat.from(this@ReminderAlarmService).notify(NOTIFICATION_ID, ringing) }
                 catch (_: SecurityException) { finishAlarm(); return@launch }
-                val duration = ReminderAlarmPolicy.durationMillis(prefs.alarmDurationMinutes, preparation, Instant.now(), eventTime)
+                val duration = ReminderAlarmPolicy.durationMillis(preparation, Instant.now(), eventTime)
                 if (duration <= 0) { finishAlarm(keepNotification = true); return@launch }
                 wakeLock = getSystemService(PowerManager::class.java).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,
                     "Agnihotra:reminder").apply { acquire(duration + 5_000) }
@@ -109,18 +109,20 @@ class ReminderAlarmService : Service() {
                     chime = AlarmChimePlayer(this@ReminderAlarmService, onFocusDenied = {
                         if (token == nextToken) {
                             // Some Android 15 firmware rejects audio focus even for an audio FGS
-                            // started by an exact alarm. Let Android own repeating notification
-                            // playback, honoring the channel's sound, volume and DND controls.
+                            // started by an exact alarm. Let Android play one notification tone;
+                            // FLAG_INSISTENT cannot count completions and would exceed five chimes.
                             val fallback = appGraph.scheduler.notification(place, prefs, type, eventTime, preparation)
                                 .setOngoing(true).setAutoCancel(false).setOnlyAlertOnce(false)
                                 .setDeleteIntent(stop).addAction(0, textContext.getString(R.string.stop_alarm), stop)
-                                .build().apply { this.flags = this.flags or Notification.FLAG_INSISTENT }
+                                .build()
                             try {
                                 systemSound = true
                                 vibrator?.cancel()
                                 NotificationManagerCompat.from(this@ReminderAlarmService).notify(NOTIFICATION_ID, fallback)
                             } catch (_: SecurityException) { finishAlarm() }
                         }
+                    }, onCompleted = {
+                        if (token == nextToken) finishAlarm(keepNotification = true)
                     }).also { it.start(channel.sound) }
                 }
                 if (prefs.vibration && channel.shouldVibrate()) {
@@ -138,7 +140,6 @@ class ReminderAlarmService : Service() {
                 // Changing the active place, disabling reminders or changing ringing options stops this session.
                 appGraph.preferences.preferences.collect { current ->
                     if (current.activePlaceId != placeId || current.sound != prefs.sound || current.vibration != prefs.vibration ||
-                        current.alarmDurationMinutes != prefs.alarmDurationMinutes ||
                         !(if (type == SolarEventType.SUNRISE) current.sunriseReminder else current.sunsetReminder) ||
                         (preparation && current.preparationMinutes != prefs.preparationMinutes)) finishAlarm()
                 }
@@ -153,7 +154,7 @@ class ReminderAlarmService : Service() {
 
     private fun releasePlayback() {
         handler.removeCallbacks(expire)
-        // Removing the foreground notification cancels any system-owned repeating tone.
+        // Removing the foreground notification cancels any system-owned fallback tone.
         // A quiet completed reminder can then be posted without leaving alarm audio behind.
         if (systemSound) { stopForeground(STOP_FOREGROUND_REMOVE); systemSound = false }
         session?.cancel(); session = null
@@ -167,7 +168,9 @@ class ReminderAlarmService : Service() {
         token = null
         val completed = finishedNotification
         finishedNotification = null
-        stopForeground(if (keepNotification && completed != null) STOP_FOREGROUND_DETACH else STOP_FOREGROUND_REMOVE)
+        // Remove the service-owned copy before posting the completed reminder. Detaching
+        // and updating the same ID can retain the old Stop action on newer Android builds.
+        stopForeground(STOP_FOREGROUND_REMOVE)
         if (keepNotification && completed != null) {
             try { NotificationManagerCompat.from(this).notify(NOTIFICATION_ID, completed) }
             catch (_: SecurityException) { /* Access was revoked while ringing. */ }

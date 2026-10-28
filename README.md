@@ -7,18 +7,21 @@ and Hindi support and a modern, accessible interface.
 ## Features
 
 - Sunrise and sunset times calculated on the device, with a countdown to the
-  next event and offline access for saved locations.
+  next event, an animated daylight path, and offline access for saved locations.
 - Current-location detection or manual entry, a home location, and
   multiple saved places. Current-location places show an approximate area subtitle
   when a name is available.
 - A travel prompt when opening the app at least 25 km from home.
 - Preparation reminders and event alarms with a warm two-note chime and vibration,
-  a five-minute default duration, and a configurable 1–30 minute limit. Stop a
-  ringing alarm from its notification.
-- A central Agnihotra button starts a timed session with saved preferences:
-  30 minutes by default, two bundled Om recordings, or your own audio file.
+  limited to five chime cycles. Stop a ringing alarm early from its notification.
+- A larger central Agnihotra button moves into a session-ready screen. Tap it
+  again to start with saved preferences: 30 minutes by default, two bundled Om
+  recordings, or your own audio file. Change the music and duration before starting
+  or from Settings.
   Music loops for the session and continues with the screen off, with pause,
-  resume, and stop controls in the app and notification.
+  resume, and stop controls in the app and notification. Pause freezes both the
+  music and countdown; resume continues the remaining time. Quick duration choices
+  and a dedicated control row keep setup and playback easy to reach.
 - A separate sunrise/sunset countdown with inline mantra, offering confirmation,
   and an optional quiet pause before music.
 - Optional seconds and 12/24-hour time formats across screens, alerts, and widgets.

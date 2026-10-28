@@ -30,7 +30,7 @@ class SessionLayoutsTest {
             CompositionLocalProvider(LocalDensity provides Density(density, 1.5f)) {
                 AgnihotraAppearance(prefs.value) {
                     Surface(Modifier.width(320.dp)) {
-                        TimedPracticePage(prefs.value, "Delhi", onOptions = { sheet.value = true }, onMantras = {})
+                        TimedPracticePage(prefs.value, onOptions = { sheet.value = true }, onMantras = {}, onDuration = { prefs.value = prefs.value.copy(practiceDurationMinutes = it) })
                     }
                     if (sheet.value) SessionOptionsSheet(prefs.value, onDuration = { prefs.value = prefs.value.copy(practiceDurationMinutes = it) },
                         onQuiet = {}, onBoolean = { _, enabled -> prefs.value = prefs.value.copy(practiceMusicEnabled = enabled) },
@@ -41,12 +41,12 @@ class SessionLayoutsTest {
         }
         for ((language, theme) in listOf("en" to "light", "en" to "dark", "hi" to "light", "hi" to "dark")) {
             compose.runOnIdle { prefs.value = prefs.value.copy(language = language, theme = theme); sheet.value = false }
-            compose.onNodeWithTag("session_timer").assertIsDisplayed()
-            compose.onNodeWithText(if (language == "en") "Start Agnihotra" else "अग्निहोत्र शुरू करें").performScrollTo().assertIsDisplayed()
+            compose.onNodeWithTag("session_timer").performScrollTo().assertIsDisplayed()
+            compose.onNodeWithTag("session_primary").performScrollTo().assertIsDisplayed()
             screenshot("timed-$language-$theme")
             compose.runOnIdle { sheet.value = true }
-            compose.onNodeWithText(if (language == "en") "30 min" else "30 मिनट").assertIsSelected()
-            compose.onNode(hasText(if (language == "en") "Om chanting · 1" else "ॐ जप · 1") and hasClickAction())
+            compose.onNode(hasText(if (language == "en") "30 min" else "30 मिनट") and hasAnyAncestor(hasTestTag("session_options_sheet"))).assertIsSelected()
+            compose.onNode(hasText(if (language == "en") "Om chanting · 1" else "ॐ जप · 1") and isSelectable())
                 .performScrollTo().assertIsSelected()
             screenshot("options-$language-$theme")
             compose.onNodeWithText(if (language == "en") "Done" else "हो गया").performScrollTo().performClick()

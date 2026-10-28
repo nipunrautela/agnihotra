@@ -1,6 +1,10 @@
 package com.nipunrautela.agnihotra.ui
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -36,14 +40,12 @@ fun SettingsPage(prefs: AppPreferences, analyticsConfigured: Boolean, notificati
     exactAllowed: Boolean, onBoolean: (String, Boolean) -> Unit, onString: (String, String) -> Unit,
     onPreparation: (Int) -> Unit, onNotifications: () -> Unit, onExactAlarms: () -> Unit,
     onPrivacy: () -> Unit, onAddWidget: (() -> Unit)? = null,
-    onChimePreview: () -> Unit = {}, onAlarmDuration: (Int) -> Unit = {}, onSessionOptions: () -> Unit = {}) {
+    onChimePreview: () -> Unit = {}, onSessionOptions: () -> Unit = {}) {
     var alarmOptions by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
     var customPreparation by remember { mutableStateOf(false) }
     var customMinutes by remember(prefs.preparationMinutes) { mutableFloatStateOf(prefs.preparationMinutes.toFloat()) }
     var reminderHelp by remember { mutableStateOf(false) }
     var backgroundHelp by remember { mutableStateOf(false) }
-    var durationDialog by remember { mutableStateOf(false) }
-    var durationMinutes by remember(prefs.alarmDurationMinutes) { mutableFloatStateOf(prefs.alarmDurationMinutes.toFloat()) }
     var chimeUnavailable by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val audio = remember(context) { context.getSystemService(AudioManager::class.java) }
@@ -69,90 +71,93 @@ fun SettingsPage(prefs: AppPreferences, analyticsConfigured: Boolean, notificati
         channelMuted = channel != null && channel.sound == null
         onPauseOrDispose { }
     }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-        SectionHeading(R.string.reminders)
-        Text(stringResource(R.string.reminder_scope), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        SettingsSwitch(R.string.sunrise_reminder, prefs.sunriseReminder) { onBoolean("sunrise_reminder", it) }
-        SettingsSwitch(R.string.sunset_reminder, prefs.sunsetReminder) { onBoolean("sunset_reminder", it) }
-        if (prefs.sunriseReminder || prefs.sunsetReminder) {
-            if (!notificationsAllowed) PermissionCard(R.string.notification_access_title, R.string.notification_access_body, onNotifications)
-            if (!exactAllowed) PermissionCard(R.string.exact_access_title, R.string.exact_access_body, onExactAlarms)
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+        SettingsSection(R.string.reminders) {
+            Text(stringResource(R.string.reminder_scope), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            SettingsSwitch(R.string.sunrise_reminder, prefs.sunriseReminder) { onBoolean("sunrise_reminder", it) }
+            SettingsSwitch(R.string.sunset_reminder, prefs.sunsetReminder) { onBoolean("sunset_reminder", it) }
+            if (prefs.sunriseReminder || prefs.sunsetReminder) {
+                if (!notificationsAllowed) PermissionCard(R.string.notification_access_title, R.string.notification_access_body, onNotifications)
+                if (!exactAllowed) PermissionCard(R.string.exact_access_title, R.string.exact_access_body, onExactAlarms)
+            }
+            TextButton(onClick = { alarmOptions = !alarmOptions }) {
+                Text(stringResource(R.string.alarm_options))
+                Spacer(Modifier.width(8.dp))
+                Icon(if (alarmOptions) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore, null, Modifier.size(20.dp))
+            }
+            AnimatedVisibility(alarmOptions) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(stringResource(R.string.preparation_time), style = MaterialTheme.typography.titleSmall)
+                    ChoiceRow(listOf(0, 5, 10, 15, 30), prefs.preparationMinutes, label = {
+                        if (it == 0) stringResource(R.string.at_event_only) else stringResource(R.string.minutes_before, it)
+                    }, onSelect = onPreparation)
+                    TextButton(onClick = { customMinutes = prefs.preparationMinutes.toFloat(); customPreparation = true }) {
+                        Text(stringResource(R.string.custom_preparation, prefs.preparationMinutes))
+                    }
+                    SettingsSwitch(R.string.sound, prefs.sound) { onBoolean("sound", it) }
+                    Text(stringResource(R.string.chime_detail), style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    OutlinedButton(onClick = {
+                        alarmMuted = audio.getStreamVolume(AudioManager.STREAM_ALARM) == 0
+                        chimeUnavailable = !preview.play()
+                        if (!chimeUnavailable) onChimePreview()
+                    }) { Text(stringResource(R.string.preview_chime)) }
+                    if (chimeUnavailable) Text(stringResource(R.string.chime_unavailable), color = MaterialTheme.colorScheme.error)
+                    if (prefs.sound && alarmMuted) Text(stringResource(R.string.alarm_volume_muted), color = MaterialTheme.colorScheme.error)
+                    if (prefs.sound && channelMuted) Text(stringResource(R.string.alarm_channel_muted), color = MaterialTheme.colorScheme.error)
+                    TextButton(onClick = onNotifications) { Text(stringResource(R.string.reminder_sound_settings)) }
+                    TextButton(onClick = { context.startActivity(Intent(Settings.ACTION_SOUND_SETTINGS)) }) {
+                        Text(stringResource(R.string.alarm_volume_settings))
+                    }
+                    SettingsSwitch(R.string.vibration, prefs.vibration) { onBoolean("vibration", it) }
+                    TextButton(onClick = { reminderHelp = true }) { Text(stringResource(R.string.reminder_help_title)) }
+                    TextButton(onClick = { backgroundHelp = true }) { Text(stringResource(R.string.background_alarm_settings)) }
+                }
+            }
         }
-        TextButton(onClick = { alarmOptions = !alarmOptions }) {
-            Text(stringResource(R.string.alarm_options))
-            Text(if (alarmOptions) "  −" else "  +")
+        SettingsSection(R.string.session_options) {
+            OutlinedCard(onClick = onSessionOptions, modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(stringResource(R.string.session_change_options), style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary)
+                    Text(stringResource(R.string.alarm_minutes, prefs.practiceDurationMinutes), style = MaterialTheme.typography.bodyLarge)
+                    Text(if (prefs.practiceMusicEnabled) prefs.musicTitle(context) else stringResource(R.string.session_silent),
+                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            SettingsSwitch(R.string.keep_screen_on, prefs.keepScreenOn) { onBoolean("keep_screen_on", it) }
         }
-        if (alarmOptions) {
-        Text(stringResource(R.string.preparation_time), style = MaterialTheme.typography.titleSmall)
-        ChoiceRow(listOf(0, 5, 10, 15, 30), prefs.preparationMinutes, label = {
-            if (it == 0) stringResource(R.string.at_event_only) else stringResource(R.string.minutes_before, it)
-        }, onSelect = onPreparation)
-        TextButton(onClick = { customMinutes = prefs.preparationMinutes.toFloat(); customPreparation = true }) {
-            Text(stringResource(R.string.custom_preparation, prefs.preparationMinutes))
+        SettingsSection(R.string.reading_options) {
+            SettingsSwitch(R.string.transliteration, prefs.showTransliteration) { onBoolean("transliteration", it) }
+            SettingsSwitch(R.string.large_text, prefs.largeMantraText) { onBoolean("large_mantra_text", it) }
         }
-        SettingsSwitch(R.string.sound, prefs.sound) { onBoolean("sound", it) }
-        Text(stringResource(R.string.chime_detail), style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
-        OutlinedButton(onClick = {
-            alarmMuted = audio.getStreamVolume(AudioManager.STREAM_ALARM) == 0
-            chimeUnavailable = !preview.play()
-            if (!chimeUnavailable) onChimePreview()
-        }) { Text(stringResource(R.string.preview_chime)) }
-        if (chimeUnavailable) Text(stringResource(R.string.chime_unavailable), color = MaterialTheme.colorScheme.error)
-        if (prefs.sound && alarmMuted) Text(stringResource(R.string.alarm_volume_muted), color = MaterialTheme.colorScheme.error)
-        if (prefs.sound && channelMuted) Text(stringResource(R.string.alarm_channel_muted), color = MaterialTheme.colorScheme.error)
-        TextButton(onClick = onNotifications) { Text(stringResource(R.string.reminder_sound_settings)) }
-        TextButton(onClick = { context.startActivity(Intent(Settings.ACTION_SOUND_SETTINGS)) }) {
-            Text(stringResource(R.string.alarm_volume_settings))
+        SettingsSection(R.string.appearance) {
+            Text(stringResource(R.string.theme), style = MaterialTheme.typography.titleSmall)
+            ChoiceRow(listOf("system", "light", "dark"), prefs.theme, label = {
+                stringResource(when (it) { "light" -> R.string.light; "dark" -> R.string.dark; else -> R.string.system })
+            }, onSelect = { onString("theme", it) })
+            Text(stringResource(R.string.language), style = MaterialTheme.typography.titleSmall)
+            ChoiceRow(listOf("system", "en", "hi"), prefs.language, label = {
+                stringResource(when (it) { "en" -> R.string.english; "hi" -> R.string.hindi; else -> R.string.system })
+            }, onSelect = { onString("language", it) })
+            Text(stringResource(R.string.time_format), style = MaterialTheme.typography.titleSmall)
+            ChoiceRow(listOf("system", "12", "24"), prefs.timeFormat, label = {
+                stringResource(when (it) { "12" -> R.string.time_format_12; "24" -> R.string.time_format_24; else -> R.string.system })
+            }, onSelect = { onString("time_format", it) })
+            SettingsSwitch(R.string.show_seconds, prefs.showSeconds) { onBoolean("show_seconds", it) }
         }
-        SettingsSwitch(R.string.vibration, prefs.vibration) { onBoolean("vibration", it) }
-        Text(stringResource(R.string.alarm_duration), style = MaterialTheme.typography.titleSmall)
-        Text(stringResource(R.string.alarm_duration_detail), style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
-        ChoiceRow(listOf(1, 3, 5, 10), prefs.alarmDurationMinutes,
-            label = { stringResource(R.string.alarm_minutes, it) }, onSelect = onAlarmDuration)
-        TextButton(onClick = { durationMinutes = prefs.alarmDurationMinutes.toFloat(); durationDialog = true }) {
-            Text(stringResource(R.string.custom_alarm_duration, prefs.alarmDurationMinutes))
+        SettingsSection(R.string.privacy) {
+            SettingsSwitch(R.string.usage_analytics, prefs.analytics) { onBoolean("analytics", it) }
+            Text(stringResource(R.string.analytics_body),
+                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            TextButton(onClick = onPrivacy) { Text(stringResource(R.string.privacy_details)) }
         }
-        TextButton(onClick = { reminderHelp = true }) { Text(stringResource(R.string.reminder_help_title)) }
-        TextButton(onClick = { backgroundHelp = true }) { Text(stringResource(R.string.background_alarm_settings)) }
+        SettingsSection(R.string.widget_heading) {
+            onAddWidget?.let { add -> FilledTonalButton(onClick = add) { Text(stringResource(R.string.add_widget)) } }
         }
-        HorizontalDivider()
-        SectionHeading(R.string.session_options)
-        TextButton(onClick = onSessionOptions) {
-            Text(stringResource(R.string.alarm_minutes, prefs.practiceDurationMinutes) + " · " +
-                if (prefs.practiceMusicEnabled) prefs.musicTitle(context) else stringResource(R.string.session_silent))
+        SettingsSection(R.string.about) {
+            Text(stringResource(R.string.about_body, versionName), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        SettingsSwitch(R.string.keep_screen_on, prefs.keepScreenOn) { onBoolean("keep_screen_on", it) }
-        SectionHeading(R.string.reading_options)
-        SettingsSwitch(R.string.transliteration, prefs.showTransliteration) { onBoolean("transliteration", it) }
-        SettingsSwitch(R.string.large_text, prefs.largeMantraText) { onBoolean("large_mantra_text", it) }
-        HorizontalDivider()
-        SectionHeading(R.string.appearance)
-        Text(stringResource(R.string.theme), style = MaterialTheme.typography.titleSmall)
-        ChoiceRow(listOf("system", "light", "dark"), prefs.theme, label = {
-            stringResource(when (it) { "light" -> R.string.light; "dark" -> R.string.dark; else -> R.string.system })
-        }, onSelect = { onString("theme", it) })
-        Text(stringResource(R.string.language), style = MaterialTheme.typography.titleSmall)
-        ChoiceRow(listOf("system", "en", "hi"), prefs.language, label = {
-            stringResource(when (it) { "en" -> R.string.english; "hi" -> R.string.hindi; else -> R.string.system })
-        }, onSelect = { onString("language", it) })
-        Text(stringResource(R.string.time_format), style = MaterialTheme.typography.titleSmall)
-        ChoiceRow(listOf("system", "12", "24"), prefs.timeFormat, label = {
-            stringResource(when (it) { "12" -> R.string.time_format_12; "24" -> R.string.time_format_24; else -> R.string.system })
-        }, onSelect = { onString("time_format", it) })
-        SettingsSwitch(R.string.show_seconds, prefs.showSeconds) { onBoolean("show_seconds", it) }
-        HorizontalDivider()
-        SectionHeading(R.string.privacy)
-        SettingsSwitch(R.string.usage_analytics, prefs.analytics) { onBoolean("analytics", it) }
-        Text(stringResource(R.string.analytics_body),
-            style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        TextButton(onClick = onPrivacy) { Text(stringResource(R.string.privacy_details)) }
-        HorizontalDivider()
-        SectionHeading(R.string.widget_heading)
-        onAddWidget?.let { add -> FilledTonalButton(onClick = add) { Text(stringResource(R.string.add_widget)) } }
-        SectionHeading(R.string.about)
-        Text(stringResource(R.string.about_body, versionName), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(24.dp))
     }
     if (customPreparation) AlertDialog(onDismissRequest = { customPreparation = false },
@@ -164,15 +169,6 @@ fun SettingsPage(prefs: AppPreferences, analyticsConfigured: Boolean, notificati
         } },
         confirmButton = { TextButton(onClick = { onPreparation(customMinutes.roundToInt()); customPreparation = false }) { Text(stringResource(R.string.apply)) } },
         dismissButton = { TextButton(onClick = { customPreparation = false; customMinutes = prefs.preparationMinutes.toFloat() }) { Text(stringResource(R.string.cancel)) } })
-    if (durationDialog) AlertDialog(onDismissRequest = { durationDialog = false },
-        title = { Text(stringResource(R.string.alarm_duration)) },
-        text = { Column {
-            Text(stringResource(R.string.alarm_minutes, durationMinutes.roundToInt()))
-            Slider(durationMinutes, { durationMinutes = it }, valueRange = 1f..30f, steps = 28,
-                modifier = Modifier.semanticsLabel(stringResource(R.string.alarm_duration)))
-        } },
-        confirmButton = { TextButton(onClick = { onAlarmDuration(durationMinutes.roundToInt()); durationDialog = false }) { Text(stringResource(R.string.apply)) } },
-        dismissButton = { TextButton(onClick = { durationDialog = false }) { Text(stringResource(R.string.cancel)) } })
     if (reminderHelp) AlertDialog(onDismissRequest = { reminderHelp = false },
         title = { Text(stringResource(R.string.reminder_help_title)) }, text = { Text(stringResource(R.string.reminder_help_detail)) },
         confirmButton = { TextButton(onClick = { reminderHelp = false }) { Text(stringResource(R.string.got_it)) } })
@@ -187,8 +183,14 @@ fun SettingsPage(prefs: AppPreferences, analyticsConfigured: Boolean, notificati
         dismissButton = { TextButton(onClick = { backgroundHelp = false }) { Text(stringResource(R.string.cancel)) } })
 }
 
-@Composable private fun SectionHeading(label: Int) {
-    Text(stringResource(label), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
+@Composable private fun SettingsSection(label: Int, content: @Composable ColumnScope.() -> Unit) {
+    Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainerLow,
+        modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(stringResource(label), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+            content()
+        }
+    }
 }
 
 @Composable private fun SettingsSwitch(label: Int, checked: Boolean, enabled: Boolean = true, onChecked: (Boolean) -> Unit) {

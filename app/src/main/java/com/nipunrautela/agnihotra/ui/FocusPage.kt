@@ -105,13 +105,13 @@ private fun FocusSessionPage(state: AppState, place: SavedPlace, calculator: Sol
     val selectedName = selectedBundle?.let { stringResource(it.titleResource) }
         ?: prefs.practiceMusicName ?: stringResource(R.string.session_silent)
 
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp),
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)) {
         Text(place.name, style = MaterialTheme.typography.titleLarge)
         place.areaName?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         Text(place.zoneId, style = MaterialTheme.typography.bodySmall)
         if (event == null) Text(stringResource(R.string.no_solar_event)) else {
-            Surface(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp), color = Color(0xFF32271F)) {
+            Surface(modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large, color = Color(0xFF32271F)) {
                 Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(stringResource(if (event.type == SolarEventType.SUNRISE) R.string.sunrise else R.string.sunset), color = Amber)
                     val remaining = when (phase) {

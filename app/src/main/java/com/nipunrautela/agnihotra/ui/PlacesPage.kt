@@ -9,6 +9,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
@@ -34,6 +38,7 @@ import com.nipunrautela.agnihotra.location.indianCities
 import java.time.LocalDate
 import java.time.ZoneId
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun PlacesPage(state: AppState, onAdd: () -> Unit, onSelect: (String) -> Unit, onHome: (String) -> Unit,
     onDelete: (String) -> Unit, onEdit: (SavedPlace) -> Unit) {
@@ -42,8 +47,8 @@ fun PlacesPage(state: AppState, onAdd: () -> Unit, onSelect: (String) -> Unit, o
     val locale = LocalConfiguration.current.locales[0]
     val use24 = context.use24HourTime(state.preferences.timeFormat)
     val now by rememberCurrentInstant()
-    LazyColumn(Modifier.fillMaxSize().padding(horizontal = 24.dp), verticalArrangement = Arrangement.spacedBy(14.dp),
-        contentPadding = PaddingValues(bottom = 24.dp)) {
+    LazyColumn(Modifier.fillMaxSize().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp)) {
         item { Text(stringResource(R.string.places_subtitle), color = MaterialTheme.colorScheme.onSurfaceVariant) }
         item {
             FilledTonalButton(onClick = onAdd, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
@@ -52,7 +57,7 @@ fun PlacesPage(state: AppState, onAdd: () -> Unit, onSelect: (String) -> Unit, o
         }
         items(state.places, key = { it.id }) { place ->
             val active = place.id == state.preferences.activePlaceId
-            Surface(shape = RoundedCornerShape(22.dp), color = if (active) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)) {
+            Surface(shape = MaterialTheme.shapes.large, color = if (active) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLow) {
                 Column(Modifier.fillMaxWidth().padding(18.dp)) {
                     Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
                         .selectable(selected = active, role = Role.RadioButton, onClick = { onSelect(place.id) }), verticalAlignment = Alignment.CenterVertically) {
@@ -72,21 +77,33 @@ fun PlacesPage(state: AppState, onAdd: () -> Unit, onSelect: (String) -> Unit, o
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     val localDate = now.atZone(place.zone).toLocalDate()
                     val day = remember(place, localDate) { com.nipunrautela.agnihotra.core.SolarCalculator().calculate(localDate, place.coordinates, place.zone) }
-                    Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                        Column(Modifier.weight(1f)) {
-                            Text(stringResource(R.string.sunrise), style = MaterialTheme.typography.labelSmall)
-                            Text(day.sunrise?.formatTime(place.zone, use24, locale, state.preferences.showSeconds) ?: "—", style = MaterialTheme.typography.bodyLarge)
+                    val times = listOf(R.string.sunrise to day.sunrise, R.string.sunset to day.sunset)
+                    if (LocalConfiguration.current.fontScale >= 1.4f || LocalConfiguration.current.screenWidthDp < 360) {
+                        Column(Modifier.fillMaxWidth().padding(top = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            times.forEach { (label, time) ->
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Text(stringResource(label), Modifier.weight(0.7f), style = MaterialTheme.typography.bodySmall)
+                                    BasicText(time?.formatTime(place.zone, use24, locale, state.preferences.showSeconds) ?: "—",
+                                        Modifier.weight(1.3f), maxLines = 1,
+                                        autoSize = TextAutoSize.StepBased(minFontSize = 12.sp, maxFontSize = 18.sp),
+                                        style = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface, textAlign = TextAlign.End, fontFeatureSettings = "tnum"))
+                                }
+                            }
                         }
-                        Column(Modifier.weight(1f)) {
-                            Text(stringResource(R.string.sunset), style = MaterialTheme.typography.labelSmall)
-                            Text(day.sunset?.formatTime(place.zone, use24, locale, state.preferences.showSeconds) ?: "—", style = MaterialTheme.typography.bodyLarge)
+                    } else Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+                        times.forEach { (label, time) ->
+                            Column(Modifier.weight(1f)) {
+                                Text(stringResource(label), style = MaterialTheme.typography.labelSmall)
+                                Text(time?.formatTime(place.zone, use24, locale, state.preferences.showSeconds) ?: "—", style = MaterialTheme.typography.bodyLarge)
+                            }
                         }
                     }
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        TextButton(onClick = { onHome(place.id) }, enabled = place.id != state.preferences.homePlaceId) {
-                            Text(stringResource(if (place.id == state.preferences.homePlaceId) R.string.home else R.string.make_home))
+                    Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        if (place.id == state.preferences.homePlaceId) Text(stringResource(R.string.home), Modifier.weight(1f),
+                            style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                        else TextButton(onClick = { onHome(place.id) }, modifier = Modifier.weight(1f)) {
+                            Text(stringResource(R.string.make_home))
                         }
-                        Spacer(Modifier.weight(1f))
                         IconButton(onClick = { onEdit(place) }) { Icon(Icons.Outlined.Edit, stringResource(R.string.edit_named_place, place.name)) }
                         IconButton(onClick = { deleting = place }) { Icon(Icons.Outlined.DeleteOutline, stringResource(R.string.delete_named_place, place.name)) }
                     }

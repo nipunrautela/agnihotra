@@ -63,18 +63,64 @@ class TimedPracticeServiceTest {
         waitFor { PracticePlaybackService.state.value.status == SessionStatus.FINISHED }
     }
 
-    @Test fun audioPauseResumeAndRepeatedStartKeepTheOriginalDeadline() {
-        start()
+    @Test fun audioPauseFreezesPastOriginalDeadlineAndResumeKeepsRemainingTime() {
+        start(2400)
         val original = PracticePlaybackService.state.value
         PracticePlaybackService.pause(context)
         waitFor { PracticePlaybackService.state.value.status == SessionStatus.PAUSED }
+        val paused = requireNotNull(PracticePlaybackService.state.value.timer)
+        val remaining = paused.remainingMillis(SystemClock.elapsedRealtime())
+        SystemClock.sleep(2700)
+        assertEquals(SessionStatus.PAUSED, PracticePlaybackService.state.value.status)
+        assertEquals(remaining, PracticePlaybackService.state.value.timer?.remainingMillis(SystemClock.elapsedRealtime()))
+        val notification = context.getSystemService(android.app.NotificationManager::class.java)
+            .activeNotifications.single { it.id == 62 }.notification
+        assertFalse(notification.extras.getBoolean(android.app.Notification.EXTRA_SHOW_CHRONOMETER))
         PracticePlaybackService.resume(context)
         waitFor { PracticePlaybackService.state.value.status == SessionStatus.PLAYING }
         start(60_000)
         assertEquals(original.id, PracticePlaybackService.state.value.id)
-        assertEquals(original.timer, PracticePlaybackService.state.value.timer)
-        PracticePlaybackService.stop(context)
-        waitFor { !PracticePlaybackService.state.value.active }
+        val resumed = requireNotNull(PracticePlaybackService.state.value.timer)
+        assertEquals(original.timer?.durationMillis, resumed.durationMillis)
+        assertTrue(resumed.endsElapsed > requireNotNull(original.timer).endsElapsed + 2500)
+        assertTrue(resumed.remainingMillis(SystemClock.elapsedRealtime()) in (remaining - 700)..remaining)
+        waitFor { PracticePlaybackService.state.value.status == SessionStatus.FINISHED }
+    }
+
+    @Test fun silentSessionAlsoPausesAndResumesItsCountdown() {
+        ContextCompat.startForegroundService(context, Intent(context, PracticePlaybackService::class.java)
+            .setAction("practice.START").putExtra("duration", 1400L)
+            .putExtra("title", "Silent fixture").putExtra("language", "en"))
+        waitFor { PracticePlaybackService.state.value.status == SessionStatus.PLAYING }
+        PracticePlaybackService.pause(context)
+        waitFor { PracticePlaybackService.state.value.status == SessionStatus.PAUSED }
+        val frozen = PracticePlaybackService.state.value.timer
+        SystemClock.sleep(1700)
+        assertEquals(frozen, PracticePlaybackService.state.value.timer)
+        assertTrue(PracticePlaybackService.state.value.active)
+        PracticePlaybackService.resume(context)
+        waitFor { PracticePlaybackService.state.value.status == SessionStatus.PLAYING }
+        waitFor { PracticePlaybackService.state.value.status == SessionStatus.FINISHED }
+    }
+
+    @Test fun audioFocusInterruptionPausesMusicAndTimerUntilExplicitResume() {
+        start()
+        val manager = context.getSystemService(android.media.AudioManager::class.java)
+        val interruption = android.media.AudioFocusRequest.Builder(android.media.AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
+            .setAudioAttributes(android.media.AudioAttributes.Builder().setUsage(android.media.AudioAttributes.USAGE_MEDIA).build())
+            .setOnAudioFocusChangeListener {}.build()
+        try {
+            assertEquals(android.media.AudioManager.AUDIOFOCUS_REQUEST_GRANTED, manager.requestAudioFocus(interruption))
+            waitFor { PracticePlaybackService.state.value.status == SessionStatus.PAUSED }
+            val frozen = requireNotNull(PracticePlaybackService.state.value.timer)
+            val remaining = frozen.remainingMillis(SystemClock.elapsedRealtime())
+            SystemClock.sleep(500)
+            assertEquals(remaining, PracticePlaybackService.state.value.timer?.remainingMillis(SystemClock.elapsedRealtime()))
+        } finally { manager.abandonAudioFocusRequest(interruption) }
+        SystemClock.sleep(150)
+        assertEquals(SessionStatus.PAUSED, PracticePlaybackService.state.value.status)
+        PracticePlaybackService.resume(context)
+        waitFor { PracticePlaybackService.state.value.status == SessionStatus.PLAYING }
     }
 
     @Test fun anOldNotificationCannotStopANewerSession() {

@@ -25,7 +25,6 @@ data class AppPreferences(
     val sunriseReminder: Boolean = false,
     val sunsetReminder: Boolean = false,
     val preparationMinutes: Int = 10,
-    val alarmDurationMinutes: Int = 5,
     val sound: Boolean = true,
     val vibration: Boolean = true,
     val analytics: Boolean = true,
@@ -56,7 +55,6 @@ class PreferencesRepository(private val context: Context) {
             activePlaceId = p[active], homePlaceId = p[home],
             sunriseReminder = p[sunrise] ?: false, sunsetReminder = p[sunset] ?: false,
             preparationMinutes = (p[preparation] ?: 10).coerceIn(0, 60),
-            alarmDurationMinutes = (p[alarmDuration] ?: 5).coerceIn(1, 30),
             sound = p[sound] ?: true, vibration = p[vibration] ?: true,
             analytics = p[analytics] ?: true, theme = p[theme] ?: "system",
             language = p[language] ?: "system",
@@ -79,7 +77,6 @@ class PreferencesRepository(private val context: Context) {
     suspend fun setBoolean(key: String, value: Boolean) = store.edit { it[booleanPreferencesKey(key)] = value }
     suspend fun setString(key: String, value: String) = store.edit { it[stringPreferencesKey(key)] = value }
     suspend fun setPreparation(minutes: Int) = store.edit { it[preparation] = minutes.coerceIn(0, 60) }
-    suspend fun setAlarmDuration(minutes: Int) = store.edit { it[alarmDuration] = minutes.coerceIn(1, 30) }
     suspend fun dismissTravel(until: Long) = store.edit { it[travelDismissedUntil] = until }
     suspend fun setPracticeQuiet(minutes: Int) = store.edit {
         require(minutes in PracticeSession.quietOptions)
@@ -142,7 +139,6 @@ class PreferencesRepository(private val context: Context) {
         private val sunrise = booleanPreferencesKey("sunrise_reminder")
         private val sunset = booleanPreferencesKey("sunset_reminder")
         private val preparation = intPreferencesKey("preparation_minutes")
-        private val alarmDuration = intPreferencesKey("alarm_duration_minutes")
         private val sound = booleanPreferencesKey("sound")
         private val vibration = booleanPreferencesKey("vibration")
         private val analytics = booleanPreferencesKey("analytics")

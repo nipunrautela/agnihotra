@@ -44,7 +44,13 @@ class PracticePlaybackService : Service() {
     private var textContext: Context = this
     private var latestStartId = 0
     private var ownedSessionId: String? = null
-    private val expire = Runnable { finish() }
+    private val expire = Runnable {
+        mutableState.value.timer?.let { timer ->
+            if (mutableState.value.active && !timer.paused) {
+                if (timer.finished(SystemClock.elapsedRealtime())) finish() else scheduleDeadline(timer)
+            }
+        }
+    }
 
     override fun onBind(intent: Intent?) = null
 
@@ -66,8 +72,8 @@ class PracticePlaybackService : Service() {
                         .apply { setSound(null, null); enableVibration(false) })
                 media = MediaSession(this, "AgnihotraSession").apply {
                     setCallback(object : MediaSession.Callback() {
-                        override fun onPlay() { resumeAudio() }
-                        override fun onPause() { pauseAudio() }
+                        override fun onPlay() { resumeSession() }
+                        override fun onPause() { pauseSession() }
                         override fun onStop() { finish() }
                     })
                     setMetadata(MediaMetadata.Builder().putString(MediaMetadata.METADATA_KEY_TITLE, mutableState.value.title)
@@ -76,36 +82,72 @@ class PracticePlaybackService : Service() {
                 }
                 ServiceCompat.startForeground(this, NOTIFICATION_ID, notification(),
                     if (Build.VERSION.SDK_INT >= 29) android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK else 0)
-                // A bounded lock also keeps the stop deadline reliable while audio is paused or silent.
-                wakeLock = getSystemService(PowerManager::class.java).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,
-                    "Agnihotra:practice").apply { acquire(millis + 5_000) }
-                handler.postDelayed(expire, millis)
-                val audio = PracticeMusicPlayer(applicationContext, looping = true)
-                player = audio
-                playbackJob = scope.launch {
-                    audio.state.collect { playback ->
-                        if (playback.failed) { finish(failed = true); return@collect }
-                        val status = when {
-                            playback.preparing -> SessionStatus.PREPARING
-                            playback.playing || source == null -> SessionStatus.PLAYING
-                            else -> SessionStatus.PAUSED
+                scheduleDeadline(timer)
+                if (source != null) {
+                    val audio = PracticeMusicPlayer(applicationContext, looping = true)
+                    player = audio
+                    audio.play(requireNotNull(source))
+                    playbackJob = scope.launch {
+                        audio.state.collect { playback ->
+                            if (playback.failed) { finish(failed = true); return@collect }
+                            val current = mutableState.value
+                            if (!current.active) return@collect
+                            when {
+                                current.timer?.paused == true -> Unit
+                                playback.preparing -> mutableState.value = current.copy(status = SessionStatus.PREPARING)
+                                playback.playing -> mutableState.value = current.copy(status = SessionStatus.PLAYING)
+                                else -> pauseSession() // Focus loss/headphone removal pauses the whole session.
+                            }
+                            updateNotification()
                         }
-                        mutableState.value = mutableState.value.copy(status = status)
-                        updateNotification()
                     }
+                } else {
+                    mutableState.value = mutableState.value.copy(status = SessionStatus.PLAYING)
+                    updateNotification()
                 }
-                source?.let(audio::play)
             } catch (_: Exception) { finish(failed = true) }
         } else if (intent?.getStringExtra("session_id") == mutableState.value.id && mutableState.value.active) {
-            when (intent?.action) { STOP -> finish(); PAUSE -> pauseAudio(); RESUME -> resumeAudio() }
+            when (intent?.action) { STOP -> finish(); PAUSE -> pauseSession(); RESUME -> resumeSession() }
         } else if (!mutableState.value.active) stopSelf(startId)
         return START_NOT_STICKY
     }
 
-    private fun pauseAudio() { player?.pause() }
-    private fun resumeAudio() {
-        if (mutableState.value.timer?.finished(SystemClock.elapsedRealtime()) != false) { finish(); return }
+    private fun pauseSession() {
+        val current = mutableState.value
+        val timer = current.timer ?: return
+        if (!current.active || timer.paused) return
+        val now = SystemClock.elapsedRealtime()
+        if (timer.finished(now)) { finish(); return }
+        mutableState.value = current.copy(timer = timer.pause(now), status = SessionStatus.PAUSED)
+        cancelDeadline()
+        player?.pause()
+        updateNotification()
+    }
+
+    private fun resumeSession() {
+        val current = mutableState.value
+        val timer = current.timer ?: return
+        if (!current.active || !timer.paused) return
+        val resumed = timer.resume(SystemClock.elapsedRealtime())
+        mutableState.value = current.copy(timer = resumed,
+            status = if (current.hasAudio) SessionStatus.PREPARING else SessionStatus.PLAYING)
+        scheduleDeadline(resumed)
         source?.let { player?.play(it) }
+        updateNotification()
+    }
+
+    private fun cancelDeadline() {
+        handler.removeCallbacks(expire)
+        wakeLock?.let { if (it.isHeld) it.release() }; wakeLock = null
+    }
+
+    private fun scheduleDeadline(timer: SessionTimer) {
+        cancelDeadline()
+        if (timer.paused) return
+        val remaining = timer.remainingMillis(SystemClock.elapsedRealtime())
+        wakeLock = getSystemService(PowerManager::class.java).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,
+            "Agnihotra:practice").apply { acquire(remaining + 5_000) }
+        handler.postDelayed(expire, remaining)
     }
 
     private fun notification(): Notification {
@@ -118,19 +160,19 @@ class PracticePlaybackService : Service() {
             .setContentText(current.title).setContentIntent(open).setOngoing(true).setOnlyAlertOnce(true)
             .setCategory(Notification.CATEGORY_TRANSPORT).setVisibility(Notification.VISIBILITY_PRIVATE)
         val remaining = current.timer?.remainingMillis(SystemClock.elapsedRealtime()) ?: 0L
-        builder.setWhen(System.currentTimeMillis() + remaining).setUsesChronometer(true).setChronometerCountDown(true)
-        val actions = if (current.hasAudio) {
-            val playing = current.status == SessionStatus.PLAYING
-            builder.addAction(Notification.Action.Builder(
-                if (playing) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play,
-                textContext.getString(if (playing) R.string.practice_pause_music else R.string.practice_play_music),
-                action(if (playing) PAUSE else RESUME)).build())
-            intArrayOf(0, 1)
-        } else intArrayOf(0)
+        val paused = current.timer?.paused == true
+        builder.setWhen(System.currentTimeMillis() + remaining).setUsesChronometer(!paused).setChronometerCountDown(true)
+        val seconds = (remaining + 999) / 1000
+        if (paused) builder.setContentText(textContext.getString(R.string.session_paused_notification, current.title,
+            textContext.getString(R.string.session_timer, seconds / 60, seconds % 60)))
+        builder.addAction(Notification.Action.Builder(
+            if (paused) android.R.drawable.ic_media_play else android.R.drawable.ic_media_pause,
+            textContext.getString(if (paused) R.string.session_resume else R.string.session_pause),
+            action(if (paused) RESUME else PAUSE)).build())
         builder.addAction(Notification.Action.Builder(android.R.drawable.ic_menu_close_clear_cancel,
             textContext.getString(R.string.practice_end), action(STOP)).build())
         return builder.setStyle(Notification.MediaStyle().setMediaSession(media?.sessionToken)
-            .setShowActionsInCompactView(*actions)).build()
+            .setShowActionsInCompactView(0, 1)).build()
     }
 
     private fun action(action: String): PendingIntent = PendingIntent.getService(this, action.hashCode(),
@@ -141,7 +183,11 @@ class PracticePlaybackService : Service() {
     private fun updateNotification() {
         val current = mutableState.value
         media?.setPlaybackState(PlaybackState.Builder().setState(
-            if (current.status == SessionStatus.PLAYING) PlaybackState.STATE_PLAYING else PlaybackState.STATE_PAUSED,
+            when (current.status) {
+                SessionStatus.PLAYING -> PlaybackState.STATE_PLAYING
+                SessionStatus.PREPARING -> PlaybackState.STATE_BUFFERING
+                else -> PlaybackState.STATE_PAUSED
+            },
             PlaybackState.PLAYBACK_POSITION_UNKNOWN, 1f)
             .setActions(PlaybackState.ACTION_PLAY or PlaybackState.ACTION_PAUSE or PlaybackState.ACTION_STOP).build())
         runCatching { getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, notification()) }
@@ -157,11 +203,10 @@ class PracticePlaybackService : Service() {
     }
 
     private fun release() {
-        handler.removeCallbacks(expire)
+        cancelDeadline()
         playbackJob?.cancel(); playbackJob = null
         player?.release(); player = null
         media?.release(); media = null
-        wakeLock?.let { if (it.isHeld) it.release() }; wakeLock = null
     }
 
     override fun onDestroy() {
@@ -180,6 +225,11 @@ class PracticePlaybackService : Service() {
         private const val PENDING_FLAGS = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         private val mutableState = MutableStateFlow(TimedPracticeState())
         val state = mutableState.asStateFlow()
+
+        /** Return from the end summary to setup without starting a service or playing audio. */
+        fun prepareNext() {
+            if (!mutableState.value.active) mutableState.value = TimedPracticeState()
+        }
 
         fun start(context: Context, prefs: AppPreferences, uri: String? = prefs.musicUri(context), title: String = prefs.musicTitle(context)): Boolean {
             if (mutableState.value.active) return true

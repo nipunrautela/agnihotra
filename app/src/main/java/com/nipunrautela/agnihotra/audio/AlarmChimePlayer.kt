@@ -11,9 +11,14 @@ import android.os.Looper
 import android.os.PowerManager
 import android.util.Log
 import com.nipunrautela.agnihotra.R
+import com.nipunrautela.agnihotra.core.ReminderAlarmPolicy
 
 /** Main-thread playback owned by the bounded foreground alarm service. Never changes system volume. */
-class AlarmChimePlayer(private val context: Context, private val onFocusDenied: () -> Unit = {}) {
+class AlarmChimePlayer(
+    private val context: Context,
+    private val onFocusDenied: () -> Unit = {},
+    private val onCompleted: () -> Unit = {},
+) {
     private val handler = Handler(Looper.getMainLooper())
     private val audio = context.getSystemService(AudioManager::class.java)
     private var focus: AudioFocusRequest? = null
@@ -24,6 +29,7 @@ class AlarmChimePlayer(private val context: Context, private val onFocusDenied: 
     private var sound: Uri? = null
     private var bundled = false
     private var attempts = 0
+    private var completedChimes = 0
     private val retryFocus = Runnable { if (active) requestFocus() }
 
     fun start(sound: Uri) {
@@ -101,8 +107,17 @@ class AlarmChimePlayer(private val context: Context, private val onFocusDenied: 
                     created.setDataSource(asset.fileDescriptor, asset.startOffset, asset.length)
                 }
             } else created.setDataSource(context, sound!!)
-            created.isLooping = true
+            created.isLooping = false
             created.setWakeMode(context, PowerManager.PARTIAL_WAKE_LOCK)
+            created.setOnCompletionListener { completed ->
+                if (player === completed && active) {
+                    completedChimes++
+                    if (completedChimes >= ReminderAlarmPolicy.CHIME_COUNT) {
+                        stop()
+                        onCompleted()
+                    } else playWhenReady()
+                }
+            }
             created.setOnErrorListener { failed, what, extra ->
                 if (player === failed) {
                     Log.w("Agnihotra", "Alarm decoder failed ($what/$extra)")
@@ -141,5 +156,6 @@ class AlarmChimePlayer(private val context: Context, private val onFocusDenied: 
         focus = null
         sound = null
         attempts = 0
+        completedChimes = 0
     }
 }

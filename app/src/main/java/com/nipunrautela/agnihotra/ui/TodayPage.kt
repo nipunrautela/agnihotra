@@ -1,6 +1,5 @@
 package com.nipunrautela.agnihotra.ui
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -17,33 +16,22 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.repeatOnLifecycle
 import com.nipunrautela.agnihotra.R
 import com.nipunrautela.agnihotra.core.*
-import kotlinx.coroutines.delay
 import java.time.*
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-import kotlin.math.*
 
 @Composable
 fun WelcomeScreen(onChoose: () -> Unit) {
@@ -78,56 +66,73 @@ fun TodayPage(state: AppState, calculator: SolarCalculator, onPlaces: () -> Unit
     // Cache the next event until its crossing instead of rerunning the model every second.
     val next = remember(place, date, day.events.count { it.instant <= now }) { calculator.nextEvent(now, place.coordinates, place.zone) }
     val locale = androidx.compose.ui.platform.LocalConfiguration.current.locales[0]
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(22.dp)) {
-        Column {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(date.format(DateTimeFormatter.ofPattern("EEEE, d MMMM", locale)),
+                style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(stringResource(R.string.today_heading), style = MaterialTheme.typography.headlineLarge)
-            Spacer(Modifier.height(18.dp))
-            Row(Modifier.heightIn(min = 48.dp).clickable(onClick = onPlaces).padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.Place, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
-                Spacer(Modifier.width(6.dp))
+        }
+        Surface(onClick = onPlaces, shape = MaterialTheme.shapes.large,
+            color = MaterialTheme.colorScheme.surfaceContainerLow) {
+            Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Icon(Icons.Outlined.Place, null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.primary)
                 Column(Modifier.weight(1f)) {
-                    Text(place.name, style = MaterialTheme.typography.labelLarge)
+                    Text(place.name, style = MaterialTheme.typography.titleMedium)
                     place.areaName?.let { Text(it, style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 }
-                Icon(Icons.Outlined.KeyboardArrowDown, null, Modifier.size(18.dp))
+                Icon(Icons.Outlined.KeyboardArrowDown, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Text(date.format(DateTimeFormatter.ofPattern("EEE, d MMM", locale)), style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Surface(shape = RoundedCornerShape(28.dp), color = Color(0xFF32271F), modifier = Modifier.fillMaxWidth()) {
-            Column(Modifier.background(Brush.verticalGradient(listOf(Color(0xFF503A2B), Color(0xFF2A2522)))).padding(24.dp)) {
+        Surface(onClick = onFocus, enabled = next != null, shape = MaterialTheme.shapes.large, color = Color(0xFF342820), modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 val nextLabel = stringResource(if (next?.type == SolarEventType.SUNSET) R.string.sunset else R.string.sunrise)
                 Text(if (next == null) stringResource(R.string.no_solar_event) else stringResource(R.string.next_event, nextLabel),
                     color = Amber, style = MaterialTheme.typography.labelLarge)
-                Spacer(Modifier.height(20.dp))
                 if (next != null) {
-                    val seconds = Duration.between(now, next.instant).seconds.coerceAtLeast(0)
-                    val spoken = countdownDescription(seconds, state.preferences.showSeconds)
-                    AdaptiveCountdown(if (state.preferences.showSeconds) stringResource(R.string.countdown_format, seconds / 3600, seconds / 60 % 60, seconds % 60)
-                        else stringResource(R.string.countdown_minutes, seconds / 3600, seconds / 60 % 60),
-                        spoken)
-                    Text(stringResource(R.string.time_remaining), color = Color(0xFFDDC9B7), style = MaterialTheme.typography.bodySmall)
+                    val time = next.instant.formatTime(place.zone, use24Hour, locale, state.preferences.showSeconds)
+                    BasicText(time, style = MaterialTheme.typography.displayMedium.copy(color = Color(0xFFFFF4E6), fontFeatureSettings = "tnum"),
+                        maxLines = 1, autoSize = TextAutoSize.StepBased(minFontSize = 24.sp, maxFontSize = 40.sp), modifier = Modifier.fillMaxWidth())
+                    Text(next.instant.atZone(place.zone).format(DateTimeFormatter.ofPattern("EEEE, d MMM", locale)),
+                        color = Color(0xFFDDC9B7), style = MaterialTheme.typography.bodySmall)
                 }
                 val progress = if (day.sunrise != null && day.sunset != null)
                     (Duration.between(day.sunrise, now).seconds.toFloat() / Duration.between(day.sunrise, day.sunset).seconds).coerceIn(0f, 1f)
                     else null
-                Spacer(Modifier.height(12.dp))
-                SolarArc(progress)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(stringResource(R.string.sun_path_today), Modifier.weight(1f),
+                        color = Color(0xFFDDC9B7), style = MaterialTheme.typography.labelSmall)
+                    val phase = when {
+                        day.sunrise == null || day.sunset == null -> R.string.event_unavailable
+                        now < day.sunrise -> R.string.sun_before_rise
+                        now >= day.sunset -> R.string.sun_after_set
+                        else -> R.string.sun_daylight
+                    }
+                    Text(stringResource(phase), Modifier.weight(1f), textAlign = TextAlign.End,
+                        color = Amber, style = MaterialTheme.typography.labelSmall)
+                }
+                key(place.id, date) { SolarArc(progress) }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(stringResource(R.string.sunrise), color = Color(0xFFDDC9B7), style = MaterialTheme.typography.labelSmall)
                     Text(stringResource(R.string.sunset), color = Color(0xFFDDC9B7), style = MaterialTheme.typography.labelSmall)
                 }
-                Spacer(Modifier.height(16.dp))
+                HorizontalDivider(color = Color(0xFF6A5140))
                 if (next != null) {
-                    val time = next.instant.formatTime(place.zone, use24Hour, locale, state.preferences.showSeconds)
-                    Text(stringResource(if (next.instant.atZone(place.zone).toLocalDate() == date) R.string.event_at else R.string.tomorrow_at, time),
-                        color = Color(0xFFF4E4D2), style = MaterialTheme.typography.bodyMedium)
-                }
-                if (next != null) TextButton(onClick = onFocus, colors = ButtonDefaults.textButtonColors(contentColor = Amber)) {
-                    Icon(Icons.Outlined.CenterFocusStrong, null, Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.focus_mode))
+                    val seconds = Duration.between(now, next.instant).seconds.coerceAtLeast(0)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(stringResource(R.string.focus_mode), color = Amber, style = MaterialTheme.typography.labelMedium)
+                            val text = if (state.preferences.showSeconds) stringResource(R.string.countdown_format, seconds / 3600, seconds / 60 % 60, seconds % 60)
+                                else stringResource(R.string.countdown_minutes, seconds / 3600, seconds / 60 % 60)
+                            val spoken = countdownDescription(seconds, state.preferences.showSeconds)
+                            BasicText(text, Modifier.fillMaxWidth().testTag("countdown").clearAndSetSemantics { contentDescription = spoken },
+                                style = MaterialTheme.typography.headlineMedium.copy(color = Color(0xFFFFF4E6), fontFeatureSettings = "tnum"),
+                                maxLines = 1, autoSize = TextAutoSize.StepBased(minFontSize = 18.sp, maxFontSize = 28.sp))
+                        }
+                        Icon(Icons.AutoMirrored.Outlined.ArrowForward, null, Modifier.size(22.dp), tint = Amber)
+                    }
                 }
             }
         }
@@ -143,22 +148,22 @@ fun TodayPage(state: AppState, calculator: SolarCalculator, onPlaces: () -> Unit
                 EventCard(SolarEventType.SUNSET, day.sunset, place.zone, now, locale, use24Hour, state.preferences.showSeconds, Modifier.weight(1f))
             }
         }
-        Surface(onClick = onReminders, shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.secondaryContainer) {
-            Row(Modifier.fillMaxWidth().padding(20.dp), verticalAlignment = Alignment.CenterVertically,
+        Surface(onClick = onReminders, shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainerLow) {
+            Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Icon(Icons.Outlined.NotificationsNone, null)
+                Icon(Icons.Outlined.NotificationsNone, null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.primary)
                 Column(Modifier.weight(1f)) {
                     Text(stringResource(R.string.reminder_heading), style = MaterialTheme.typography.titleMedium)
                     Text(stringResource(when {
                         !(state.preferences.sunriseReminder || state.preferences.sunsetReminder) -> R.string.reminders_off
                         !remindersReady -> R.string.reminders_need_access
                         else -> R.string.reminders_on
-                    }), style = MaterialTheme.typography.bodyMedium)
+                    }), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Icon(Icons.AutoMirrored.Outlined.ArrowForward, null)
+                Icon(Icons.Outlined.ChevronRight, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
-        OutlinedButton(onClick = onMantras, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.read_mantras)) }
+        OutlinedButton(onClick = onMantras, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text(stringResource(R.string.read_mantras)) }
         TextButton(onClick = { timingInfo = true }) { Text(stringResource(R.string.timing_details)) }
         Spacer(Modifier.height(8.dp))
     }
@@ -189,45 +194,15 @@ internal fun AdaptiveCountdown(text: String, spoken: String, modifier: Modifier 
 }
 
 @Composable
-internal fun SolarArc(progress: Float?) {
-    BoxWithConstraints(Modifier.fillMaxWidth()) {
-        // Reserve the full glow at the top, bottom and both ends at every width.
-        // Drawing is clipped to its own measured region, never into adjacent text.
-        val chartHeight = (maxWidth / 2.6f).coerceIn(112.dp, 168.dp)
-        Canvas(Modifier.fillMaxWidth().height(chartHeight).clipToBounds().testTag("solar_arc")) {
-            val inset = 28.dp.toPx().coerceAtMost(size.width / 4)
-            val halfWidth = (size.width / 2 - inset).coerceAtLeast(0f)
-            val baseline = size.height - inset
-            val rise = (size.height - 2 * inset).coerceAtLeast(0f)
-            val arcSize = androidx.compose.ui.geometry.Size(halfWidth * 2, rise * 2)
-            val topLeft = Offset(inset, inset)
-            drawLine(Color(0xFFB79B82).copy(alpha = 0.3f), Offset(inset, baseline),
-                Offset(size.width - inset, baseline), 1.dp.toPx())
-            drawArc(Amber.copy(alpha = 0.32f), 180f, 180f, false, topLeft, arcSize,
-                style = Stroke(width = 1.5.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(3.dp.toPx(), 5.dp.toPx()))))
-            if (progress != null) {
-                val fraction = progress.coerceIn(0f, 1f)
-                drawArc(Amber.copy(alpha = 0.8f), 180f, 180f * fraction, false, topLeft, arcSize,
-                    style = Stroke(width = 2.dp.toPx()))
-                val angle = PI + PI * fraction
-                val sun = Offset(size.width / 2 + halfWidth * cos(angle).toFloat(), baseline + rise * sin(angle).toFloat())
-                drawCircle(Amber.copy(alpha = 0.07f), 26.dp.toPx(), sun)
-                drawCircle(Amber.copy(alpha = 0.14f), 17.dp.toPx(), sun)
-                drawCircle(Amber, 7.dp.toPx(), sun)
-            }
-        }
-    }
-}
-
-@Composable
 private fun EventCard(type: SolarEventType, time: Instant?, zone: ZoneId, now: Instant, locale: Locale, use24Hour: Boolean, showSeconds: Boolean, modifier: Modifier) {
-    Surface(modifier, shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)) {
+    Surface(modifier, shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainerLow) {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Icon(if (type == SolarEventType.SUNRISE) Icons.Outlined.WbSunny else Icons.Outlined.WbTwilight,
                 null, tint = MaterialTheme.colorScheme.primary)
             Text(stringResource(if (type == SolarEventType.SUNRISE) R.string.sunrise else R.string.sunset), style = MaterialTheme.typography.labelLarge)
-            Text(time?.formatTime(zone, use24Hour, locale, showSeconds) ?: "—",
-                style = MaterialTheme.typography.titleLarge, fontFamily = FontFamily.Serif)
+            BasicText(time?.formatTime(zone, use24Hour, locale, showSeconds) ?: "—",
+                style = MaterialTheme.typography.titleLarge.copy(color = MaterialTheme.colorScheme.onSurface, fontFeatureSettings = "tnum"),
+                maxLines = 1, autoSize = TextAutoSize.StepBased(minFontSize = 14.sp, maxFontSize = 20.sp), modifier = Modifier.fillMaxWidth())
             Text(stringResource(if (time == null) R.string.event_unavailable else if (time <= now) R.string.past_event else R.string.upcoming_event),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }

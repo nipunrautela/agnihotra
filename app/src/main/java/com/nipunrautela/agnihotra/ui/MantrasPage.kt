@@ -2,7 +2,6 @@ package com.nipunrautela.agnihotra.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.WbSunny
@@ -17,6 +16,7 @@ import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -46,7 +46,7 @@ fun MantrasPage(prefs: AppPreferences = AppPreferences(), onBoolean: (String, Bo
         lifecycle.addObserver(observer)
         onDispose { lifecycle.removeObserver(observer); audio.release() }
     }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip(prefs.showTransliteration, onClick = { onBoolean("transliteration", !prefs.showTransliteration) }, label = { Text(stringResource(R.string.transliteration)) })
             FilterChip(prefs.largeMantraText, onClick = { onBoolean("large_mantra_text", !prefs.largeMantraText) }, label = { Text(stringResource(R.string.large_text)) })
@@ -73,16 +73,16 @@ fun MantrasPage(prefs: AppPreferences = AppPreferences(), onBoolean: (String, Bo
     val title = stringResource(if (morning) R.string.sunrise_mantra else R.string.sunset_mantra)
     val text = stringResource(if (morning) R.string.mantra_morning else R.string.mantra_evening)
     val latin = stringResource(if (morning) R.string.mantra_morning_latin else R.string.mantra_evening_latin)
-    Surface(shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)) {
-        Column(Modifier.fillMaxWidth().padding(22.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+    Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainerLow) {
+        Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Icon(if (morning) Icons.Outlined.WbSunny else Icons.Outlined.WbTwilight, null, tint = MaterialTheme.colorScheme.primary)
+                Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
                 IconButton(onClick = {
                     val copied = if (prefs.showTransliteration) "$text\n\n$latin" else text
                     context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(title, copied))
                 }) { Icon(Icons.Outlined.ContentCopy, stringResource(R.string.copy_named_mantra, title)) }
             }
-            Text(title, style = MaterialTheme.typography.titleLarge)
             Text(stringResource(if (morning) R.string.sunrise_mantra_guidance else R.string.sunset_mantra_guidance),
                 style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             SelectionContainer { Text(text, fontSize = if (prefs.largeMantraText) 30.sp else 23.sp,

@@ -35,13 +35,21 @@ Firebase Analytics still requires that local project configuration.
   from home, accounting for location freshness and accuracy. Avoid repeated
   prompts and do not silently replace the home location.
 - Provide preparation reminders and event-time alerts with chime and vibration.
+  Alarm audio plays at most five complete chime cycles; stop vibration with playback.
+  Keep a short hard timeout and end preparation alarms at the event boundary.
+  If audio focus is denied, use a single system notification tone instead of an
+  uncountable repeating notification. Respect system alarm volume and channel choices.
 - Include a home-screen widget, monthly timetable, and reviewed mantra text.
   Mantra recordings are deferred until an approved source is available; do not
   add placeholder playback controls or unlicensed recordings. Post-practice music
   supports user-selected audio and the separate `ReleaseConfiguration.practiceMusic`
   catalog. Two owner-supplied Om recordings are bundled. The center navigation
-  action starts a timed audio session immediately with saved preferences (30 minutes
-  by default), looping audio until the timer ends or the user stops it. Keep this
+  action opens a session-ready screen with a shared flame transition; tapping the
+  enlarged flame again starts the timer and audio with saved preferences (30 minutes
+  by default). Music and duration remain available in Settings and on the session
+  screen. Pause freezes both the music and timer, including audio interruptions;
+  resume continues the remaining time. Audio loops until the timer ends or the
+  user stops it. Ending returns to setup before another session starts. Keep this
   user-chosen session length separate from the sunrise/sunset offering time.
   The event-countdown flow still supports offering confirmation and an optional
   quiet pause afterward; do not invent a fixed mandatory ritual duration.

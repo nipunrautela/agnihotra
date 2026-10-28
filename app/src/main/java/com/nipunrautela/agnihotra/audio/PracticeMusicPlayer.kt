@@ -49,8 +49,9 @@ class PracticeMusicPlayer(private val context: Context, private val looping: Boo
             created.setOnPreparedListener {
                 if (player === it) {
                     ready = true
-                    mutableState.value = MusicPlayback()
-                    if (playWhenReady) start()
+                    // Do not emit a transient paused state just before starting: the session
+                    // owner uses a real interruption to pause its timer as well as its music.
+                    if (playWhenReady) start() else mutableState.value = MusicPlayback()
                 }
             }
             created.setOnCompletionListener { pause(); it.seekTo(0) }

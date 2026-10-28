@@ -7,6 +7,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.graphics.asAndroidBitmap
+import android.graphics.Bitmap
+import java.io.File
+import androidx.test.core.app.ApplicationProvider
+import android.content.Context
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.*
@@ -58,4 +63,33 @@ class SolarArcLayoutTest {
             }
         }
     }
+    @Test fun sunAndCoronaStayInsideTheChartDuringEntryMotion() {
+        compose.mainClock.autoAdvance = false
+        compose.setContent {
+            AgnihotraTheme("dark") {
+                Column(Modifier.width(320.dp).background(Color.Black)) { SolarArc(1f) }
+            }
+        }
+        try {
+            val context = ApplicationProvider.getApplicationContext<Context>()
+            val destination = File(context.getExternalFilesDir(null), "sun-motion-review").apply { mkdirs() }
+            var previous = 0L
+            for (time in listOf(200L, 600L, 1_300L)) {
+                compose.mainClock.advanceTimeBy(time - previous)
+                previous = time
+                val capture = compose.onNodeWithTag("solar_arc").captureToImage()
+                val pixels = capture.toPixelMap()
+                for (x in 0 until pixels.width) {
+                    assertEquals(Color.Black, pixels[x, 0])
+                    assertEquals(Color.Black, pixels[x, pixels.height - 1])
+                }
+                for (y in 0 until pixels.height) {
+                    assertEquals(Color.Black, pixels[0, y])
+                    assertEquals(Color.Black, pixels[pixels.width - 1, y])
+                }
+                File(destination, "$time.png").outputStream().use { capture.asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it) }
+            }
+        } finally { compose.mainClock.autoAdvance = true }
+    }
+
 }

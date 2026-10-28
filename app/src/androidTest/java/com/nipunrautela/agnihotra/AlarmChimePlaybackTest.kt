@@ -12,6 +12,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.nipunrautela.agnihotra.audio.AlarmChimePlayer
 import com.nipunrautela.agnihotra.audio.ReminderChime
 import org.junit.Assert.*
+import java.util.concurrent.atomic.AtomicLong
 import org.junit.Test
 
 class AlarmChimePlaybackTest {
@@ -40,6 +41,27 @@ class AlarmChimePlaybackTest {
                 awaitPlaying(true)
             } finally { onMain { player.stop() } }
             awaitPlaying(false)
+        }
+    }
+
+    @Test fun bundledAlarmCompletesExactlyFiveCyclesAndReleasesAudio() {
+        check(context.packageName.endsWith(".verification"))
+        ActivityScenario.launch(MainActivity::class.java).use {
+            val completedAt = AtomicLong(0)
+            val player = AlarmChimePlayer(context, onCompleted = { completedAt.set(SystemClock.elapsedRealtime()) })
+            val startedAt = SystemClock.elapsedRealtime()
+            try {
+                onMain { player.start(ReminderChime.uri(context)) }
+                awaitPlaying(true)
+                val end = startedAt + 18_000
+                while (completedAt.get() == 0L && SystemClock.elapsedRealtime() < end) SystemClock.sleep(100)
+                val elapsed = completedAt.get() - startedAt
+                // A 2.8s asset must finish five complete cycles (14s); four/six cycles fail this window.
+                assertTrue("Five chimes should complete in about 14s, actual $elapsed ms", elapsed in 13_800..16_500)
+                awaitPlaying(false)
+                SystemClock.sleep(500)
+                assertFalse("A completed alarm must stay stopped", playing())
+            } finally { onMain { player.stop() } }
         }
     }
 

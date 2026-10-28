@@ -17,34 +17,36 @@ import android.view.ContextThemeWrapper
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.res.painterResource
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nipunrautela.agnihotra.R
 import com.nipunrautela.agnihotra.analytics.UsageEvent
-import com.nipunrautela.agnihotra.data.SavedPlace
 import com.nipunrautela.agnihotra.data.AppPreferences
 import com.nipunrautela.agnihotra.widget.AgnihotraWidgetReceiver
 import com.nipunrautela.agnihotra.widget.WidgetPinReceiver
@@ -84,7 +86,7 @@ fun AgnihotraAppearance(prefs: AppPreferences, content: @Composable () -> Unit) 
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
 @Composable
 private fun AppContent(model: AppViewModel, state: AppState, sessionRequest: Int) {
     val context = LocalContext.current
@@ -156,117 +158,126 @@ private fun AppContent(model: AppViewModel, state: AppState, sessionRequest: Int
         if (addPlace) { if (!savingPlace) addPlace = false }
         else pageName = if (page == Page.PRIVACY) privacyPrevious else Page.TODAY.name
     }
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        contentWindowInsets = WindowInsets.safeDrawing,
-        topBar = {
-            TopAppBar(
-                windowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top),
-                title = {
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                        Icon(Icons.Outlined.LocalFireDepartment, null, tint = MaterialTheme.colorScheme.primary)
-                        Text(stringResource(if (page == Page.TODAY) R.string.app_name else page.label), style = MaterialTheme.typography.titleLarge)
-                    }
-                },
-                navigationIcon = {
-                    if (page in listOf(Page.SETTINGS, Page.PRIVACY, Page.FOCUS)) IconButton(onClick = {
-                        pageName = if (page == Page.PRIVACY) privacyPrevious else Page.TODAY.name
-                    }) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.back))
-                    }
-                },
-                actions = {
-                    if (page !in listOf(Page.SETTINGS, Page.PRIVACY, Page.FOCUS)) IconButton(onClick = {
-                        model.graph.analytics.record(UsageEvent.SETTINGS_OPENED)
-                        pageName = Page.SETTINGS.name
-                    }) {
-                        Icon(Icons.Outlined.Settings, stringResource(R.string.settings))
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
-            )
-        },
-        bottomBar = {
-            if (!state.loading && page !in listOf(Page.SETTINGS, Page.PRIVACY, Page.FOCUS)) NavigationBar(
-                containerColor = MaterialTheme.colorScheme.surface,
-                windowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)) {
-                listOf(Page.TODAY, Page.TIMETABLE, Page.PRACTICE, Page.MANTRAS, Page.PLACES).forEach { destination ->
-                    if (destination == Page.PRACTICE) {
-                        val description = stringResource(if (practice.active) R.string.session_open else R.string.practice_start)
-                        Box(Modifier.weight(1f).heightIn(min = 80.dp), contentAlignment = Alignment.Center) {
-                            FloatingActionButton(onClick = {
-                                if (!practice.active) PracticePlaybackService.start(context, state.preferences)
-                                pageName = Page.PRACTICE.name
-                            }, shape = CircleShape, modifier = Modifier.size(64.dp).testTag("start_agnihotra")
-                                .semantics { contentDescription = description }) {
-                                Image(painterResource(R.drawable.ic_agnihotra), null, Modifier.size(56.dp).clip(CircleShape))
-                            }
+    SharedTransitionLayout {
+        val sharedScope = this
+        val flame = rememberSharedContentState("practice_flame")
+        val screenState = rememberSaveableStateHolder()
+        Scaffold(
+            containerColor = MaterialTheme.colorScheme.background,
+            contentWindowInsets = WindowInsets.safeDrawing,
+            topBar = {
+                TopAppBar(
+                    windowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top),
+                    title = {
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            if (page == Page.TODAY) FlameMark(Modifier.size(20.dp, 28.dp))
+                            Text(stringResource(if (page == Page.TODAY) R.string.app_name else page.label),
+                                style = MaterialTheme.typography.titleLarge, maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                         }
-                        return@forEach
-                    }
-                    val icon = when (destination) {
-                        Page.TODAY -> Icons.Outlined.WbSunny
-                        Page.TIMETABLE -> Icons.Outlined.CalendarMonth
-                        Page.MANTRAS -> Icons.AutoMirrored.Outlined.MenuBook
-                        else -> Icons.Outlined.Place
-                    }
-                    NavigationBarItem(selected = page == destination, onClick = {
+                    },
+                    navigationIcon = {
+                        if (page in listOf(Page.SETTINGS, Page.PRIVACY, Page.FOCUS, Page.PRACTICE)) IconButton(onClick = {
+                            pageName = if (page == Page.PRIVACY) privacyPrevious else Page.TODAY.name
+                        }) {
+                            Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.back))
+                        }
+                    },
+                    actions = {
+                        if (page !in listOf(Page.SETTINGS, Page.PRIVACY, Page.FOCUS, Page.PRACTICE)) IconButton(onClick = {
+                            model.graph.analytics.record(UsageEvent.SETTINGS_OPENED)
+                            pageName = Page.SETTINGS.name
+                        }) {
+                            Icon(Icons.Outlined.Settings, stringResource(R.string.settings))
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
+                )
+            },
+            bottomBar = {
+                if (!state.loading && page !in listOf(Page.SETTINGS, Page.PRIVACY, Page.FOCUS)) {
+                    NavigationDock(page, onPage = { destination ->
                         pageName = destination.name
                         if (destination == Page.TIMETABLE) model.graph.analytics.record(UsageEvent.TIMETABLE_OPENED)
-                    }, icon = { Icon(icon, null) }, label = { Text(stringResource(destination.label)) })
+                    }) {
+                        androidx.compose.animation.AnimatedVisibility(page != Page.PRACTICE,
+                            enter = fadeIn(tween(180)), exit = fadeOut(tween(120))) {
+                            PracticeActionButton(onClick = { PracticePlaybackService.prepareNext(); pageName = Page.PRACTICE.name },
+                                description = stringResource(if (practice.active) R.string.session_open else R.string.session_prepare),
+                                modifier = with(sharedScope) {
+                                    Modifier.sharedElement(flame, this@AnimatedVisibility,
+                                        boundsTransform = { _, _ -> tween(420, easing = FastOutSlowInEasing) })
+                                }.widthIn(max = 64.dp).fillMaxWidth().aspectRatio(1f).testTag("start_agnihotra"))
+                        }
+                    }
                 }
-            }
-        },
-        snackbarHost = { SnackbarHost(snackbar) },
-    ) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
-            when {
-                state.loading -> CircularProgressIndicator(Modifier.align(androidx.compose.ui.Alignment.Center))
-                page == Page.PRIVACY -> PrivacyPage()
-                page == Page.SETTINGS -> SettingsPage(state.preferences, model.graph.analytics.configured,
-                    notificationAccess, exactAccess, model::boolean, model::string, model::preparation,
-                    onNotifications = {
-                        val activity = context.activityOrNull()
-                        val canRequest = Build.VERSION.SDK_INT >= 33 && (!state.preferences.notificationAsked || (activity != null &&
-                            ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.POST_NOTIFICATIONS)))
-                        if (Build.VERSION.SDK_INT >= 33 && !model.graph.scheduler.hasNotificationAccess() && canRequest) {
-                            model.boolean("notification_asked", true)
-                            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-                        } else context.startActivity(model.graph.scheduler.notificationSettingsIntent(state.preferences))
-                    }, onExactAlarms = {
-                        if (Build.VERSION.SDK_INT >= 31) context.startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
-                            Uri.parse("package:${context.packageName}")))
-                    }, onPrivacy = { privacyPrevious = Page.SETTINGS.name; pageName = Page.PRIVACY.name },
-                    onAddWidget = if (widgetManager.isRequestPinAppWidgetSupported) ({
-                        val callback = PendingIntent.getBroadcast(context, 50, Intent(context, WidgetPinReceiver::class.java),
-                            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-                        if (widgetManager.requestPinAppWidget(ComponentName(context, AgnihotraWidgetReceiver::class.java), null, callback))
-                            model.graph.analytics.record(UsageEvent.WIDGET_PIN_REQUESTED)
-                        Unit
-                    }) else null,
-                    onChimePreview = { model.graph.analytics.record(UsageEvent.CHIME_PREVIEWED) },
-                    onAlarmDuration = model::alarmDuration, onSessionOptions = { sessionOptions = true })
-                page == Page.PRACTICE -> TimedPracticePage(state.preferences, state.activePlace?.name,
-                    onOptions = { sessionOptions = true }, onMantras = { pageName = Page.MANTRAS.name })
-                state.places.isEmpty() && page in listOf(Page.TODAY, Page.FOCUS) -> WelcomeScreen(showAdd)
-                page == Page.FOCUS -> FocusPage(state, model.graph.calculator, model::boolean,
-                    model::practiceQuiet, model::practiceMusic, model::bundledPracticeMusic, onDuration = model::practiceDuration,
-                    onTimedSession = { pageName = Page.PRACTICE.name })
-                page == Page.TODAY -> TodayPage(state, model.graph.calculator,
-                    onPlaces = { pageName = Page.PLACES.name }, onReminders = { pageName = Page.SETTINGS.name },
-                    remindersReady = exactAccess && notificationAccess,
-                    onFocus = { pageName = Page.FOCUS.name }, onMantras = { pageName = Page.MANTRAS.name })
-                page == Page.TIMETABLE -> TimetablePage(state.activePlace, model.graph.calculator, state.preferences)
-                page == Page.MANTRAS -> MantrasPage(state.preferences, model::boolean)
-                page == Page.PLACES -> PlacesPage(state, showAdd, model::select, model::home, model::delete) {
-                    editingId = it.id; model.locationFix.value = null; model.searchResults.value = emptyList()
-                    model.placeSaveFailed.value = false; addPlace = true
+            },
+            snackbarHost = { SnackbarHost(snackbar) },
+        ) { padding ->
+            Box(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
+                AnimatedContent(targetState = page, modifier = Modifier.fillMaxSize(), label = "app_destination",
+                    transitionSpec = {
+                        (fadeIn(tween(240, delayMillis = 90)) togetherWith fadeOut(tween(90)))
+                            .using(SizeTransform(clip = false))
+                    }) { destination ->
+                    screenState.SaveableStateProvider(destination.name) {
+                        when {
+                            state.loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                            destination == Page.PRACTICE -> TimedPracticePage(state.preferences,
+                                onOptions = { sessionOptions = true }, onMantras = { pageName = Page.MANTRAS.name },
+                                onDuration = model::practiceDuration, actionModifier = with(sharedScope) {
+                                    Modifier.sharedElement(flame, this@AnimatedContent,
+                                        boundsTransform = { _, _ -> tween(420, easing = FastOutSlowInEasing) })
+                                }, ringModifier = with(this@AnimatedContent) {
+                                    Modifier.animateEnterExit(enter = fadeIn(tween(160, delayMillis = 360)),
+                                        exit = fadeOut(tween(80)))
+                                })
+                            destination == Page.PRIVACY -> PrivacyPage()
+                            destination == Page.SETTINGS -> SettingsPage(state.preferences, model.graph.analytics.configured,
+                                notificationAccess, exactAccess, model::boolean, model::string, model::preparation,
+                                onNotifications = {
+                                    val activity = context.activityOrNull()
+                                    val canRequest = Build.VERSION.SDK_INT >= 33 && (!state.preferences.notificationAsked || (activity != null &&
+                                        ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.POST_NOTIFICATIONS)))
+                                    if (Build.VERSION.SDK_INT >= 33 && !model.graph.scheduler.hasNotificationAccess() && canRequest) {
+                                        model.boolean("notification_asked", true)
+                                        notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                    } else context.startActivity(model.graph.scheduler.notificationSettingsIntent(state.preferences))
+                                }, onExactAlarms = {
+                                    if (Build.VERSION.SDK_INT >= 31) context.startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
+                                        Uri.parse("package:${context.packageName}")))
+                                }, onPrivacy = { privacyPrevious = Page.SETTINGS.name; pageName = Page.PRIVACY.name },
+                                onAddWidget = if (widgetManager.isRequestPinAppWidgetSupported) ({
+                                    val callback = PendingIntent.getBroadcast(context, 50, Intent(context, WidgetPinReceiver::class.java),
+                                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+                                    if (widgetManager.requestPinAppWidget(ComponentName(context, AgnihotraWidgetReceiver::class.java), null, callback))
+                                        model.graph.analytics.record(UsageEvent.WIDGET_PIN_REQUESTED)
+                                    Unit
+                                }) else null,
+                                onChimePreview = { model.graph.analytics.record(UsageEvent.CHIME_PREVIEWED) },
+                                onSessionOptions = { sessionOptions = true })
+                            state.places.isEmpty() && destination in listOf(Page.TODAY, Page.FOCUS) -> WelcomeScreen(showAdd)
+                            destination == Page.FOCUS -> FocusPage(state, model.graph.calculator, model::boolean,
+                                model::practiceQuiet, model::practiceMusic, model::bundledPracticeMusic, onDuration = model::practiceDuration,
+                                onTimedSession = { pageName = Page.PRACTICE.name })
+                            destination == Page.TODAY -> TodayPage(state, model.graph.calculator,
+                                onPlaces = { pageName = Page.PLACES.name }, onReminders = { pageName = Page.SETTINGS.name },
+                                remindersReady = exactAccess && notificationAccess,
+                                onFocus = { pageName = Page.FOCUS.name }, onMantras = { pageName = Page.MANTRAS.name })
+                            destination == Page.TIMETABLE -> TimetablePage(state.activePlace, model.graph.calculator, state.preferences)
+                            destination == Page.MANTRAS -> MantrasPage(state.preferences, model::boolean)
+                            destination == Page.PLACES -> PlacesPage(state, showAdd, model::select, model::home, model::delete) {
+                                editingId = it.id; model.locationFix.value = null; model.searchResults.value = emptyList()
+                                model.placeSaveFailed.value = false; addPlace = true
+                            }
+                        }
+                    }
                 }
             }
         }
     }
     if (sessionOptions) SessionOptionsSheet(state.preferences, model::practiceDuration, model::practiceQuiet,
-        model::boolean, model::practiceMusic, model::bundledPracticeMusic, onDismiss = { sessionOptions = false })
+        model::boolean, model::practiceMusic, model::bundledPracticeMusic, onDismiss = { sessionOptions = false }, forNextSession = practice.active || practice.status == com.nipunrautela.agnihotra.audio.SessionStatus.FINISHED)
     if (addPlace && !state.loading) PlaceDialog(model, editing, locate,
         onDismiss = { if (!savingPlace) addPlace = false }, onSave = { place, makeHome -> model.save(place, makeHome) })
     travel?.let { suggestion ->

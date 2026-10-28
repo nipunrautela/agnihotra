@@ -1,6 +1,7 @@
 package com.nipunrautela.agnihotra.ui
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
@@ -12,6 +13,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.dp
 
 val Copper = Color(0xFF955032)
 val Amber = Color(0xFFF0BD72)
@@ -24,6 +26,9 @@ private val LightColors = lightColorScheme(
     surface = Color(0xFFFAF6EF), onSurface = Color(0xFF30251F),
     surfaceVariant = Color(0xFFF0E9DF), onSurfaceVariant = Color(0xFF706057),
     outline = Color(0xFF8A776B), outlineVariant = Color(0xFFE0D5C9),
+    surfaceContainerLowest = Color(0xFFFFFCF7), surfaceContainerLow = Color(0xFFF5EFE6),
+    surfaceContainer = Color(0xFFF0E8DC), surfaceContainerHigh = Color(0xFFECE2D5),
+    surfaceContainerHighest = Color(0xFFE5D9CA), surfaceTint = Copper,
 )
 private val DarkColors = darkColorScheme(
     primary = Color(0xFFF0BD94), onPrimary = Color(0xFF4A281A),
@@ -34,6 +39,9 @@ private val DarkColors = darkColorScheme(
     surface = Color(0xFF1C1917), onSurface = Color(0xFFF1E5DA),
     surfaceVariant = Color(0xFF302923), onSurfaceVariant = Color(0xFFD0BFB1),
     outline = Color(0xFFA18E80), outlineVariant = Color(0xFF4D4137),
+    surfaceContainerLowest = Color(0xFF181512), surfaceContainerLow = Color(0xFF25201C),
+    surfaceContainer = Color(0xFF2C2520), surfaceContainerHigh = Color(0xFF342C25),
+    surfaceContainerHighest = Color(0xFF3E342C), surfaceTint = Color(0xFFF0BD94),
 )
 
 @Composable
@@ -51,15 +59,23 @@ fun AgnihotraTheme(theme: String = "system", content: @Composable () -> Unit) {
     }
     MaterialTheme(
         colorScheme = if (dark) DarkColors else LightColors,
+        shapes = Shapes(extraSmall = RoundedCornerShape(8.dp), small = RoundedCornerShape(12.dp),
+            medium = RoundedCornerShape(18.dp), large = RoundedCornerShape(24.dp), extraLarge = RoundedCornerShape(28.dp)),
         typography = Typography(
-            displayLarge = TextStyle(fontFamily = FontFamily.Serif, fontSize = 52.sp, lineHeight = 60.sp),
-            displayMedium = TextStyle(fontFamily = FontFamily.Serif, fontSize = 42.sp, lineHeight = 50.sp),
-            headlineLarge = TextStyle(fontFamily = FontFamily.Serif, fontSize = 34.sp, lineHeight = 42.sp),
-            headlineMedium = TextStyle(fontFamily = FontFamily.Serif, fontSize = 28.sp, lineHeight = 36.sp),
-            titleLarge = TextStyle(fontSize = 21.sp, lineHeight = 28.sp, fontWeight = FontWeight.Medium),
+            displayLarge = TextStyle(fontSize = 56.sp, lineHeight = 64.sp, fontWeight = FontWeight.Light),
+            displayMedium = TextStyle(fontSize = 40.sp, lineHeight = 48.sp, fontWeight = FontWeight.Light),
+            headlineLarge = TextStyle(fontFamily = FontFamily.Serif, fontSize = 30.sp, lineHeight = 38.sp),
+            headlineMedium = TextStyle(fontSize = 26.sp, lineHeight = 34.sp),
+            headlineSmall = TextStyle(fontSize = 23.sp, lineHeight = 30.sp),
+            titleLarge = TextStyle(fontSize = 20.sp, lineHeight = 28.sp, fontWeight = FontWeight.Medium),
+            titleMedium = TextStyle(fontSize = 16.sp, lineHeight = 24.sp, fontWeight = FontWeight.Medium),
+            titleSmall = TextStyle(fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.Medium),
             bodyLarge = TextStyle(fontSize = 16.sp, lineHeight = 25.sp),
             bodyMedium = TextStyle(fontSize = 14.sp, lineHeight = 22.sp),
+            bodySmall = TextStyle(fontSize = 12.sp, lineHeight = 18.sp),
             labelLarge = TextStyle(fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.Medium),
+            labelMedium = TextStyle(fontSize = 12.sp, lineHeight = 18.sp, fontWeight = FontWeight.Medium),
+            labelSmall = TextStyle(fontSize = 11.sp, lineHeight = 16.sp, fontWeight = FontWeight.Medium),
         ), content = content,
     )
 }

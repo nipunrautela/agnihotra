@@ -42,21 +42,21 @@ class SettingsAccessibilityTest {
         compose.onNodeWithText("Analytics is not connected in this development build.").assertDoesNotExist()
     }
 
-    @Test fun alarmDurationCanBeChangedAndCustomSelectionCanBeCancelled() {
+    @Test fun fiveChimeLimitIsExplainedAndMusicSettingsStayAvailable() {
+        var openedOptions = false
         compose.setContent {
-            var prefs by remember { mutableStateOf(AppPreferences(language = "en", theme = "light")) }
+            val prefs = AppPreferences(language = "en", theme = "light")
             AgnihotraAppearance(prefs) {
                 SettingsPage(prefs, false, true, true, onBoolean = { _, _ -> }, onString = { _, _ -> },
                     onPreparation = {}, onNotifications = {}, onExactAlarms = {}, onPrivacy = {},
-                    onAlarmDuration = { prefs = prefs.copy(alarmDurationMinutes = it) })
+                    onSessionOptions = { openedOptions = true })
             }
         }
         compose.onNodeWithText("Alarm options").performScrollTo().performClick()
-        compose.onNodeWithText("5 min").performScrollTo().assertIsSelected()
-        compose.onNodeWithText("10 min").performClick().assertIsSelected()
-        compose.onNodeWithText("Custom duration · 10 min").performScrollTo().performClick()
-        compose.onNodeWithText("Cancel").performClick()
-        compose.onNodeWithText("10 min").assertIsSelected()
+        compose.onNodeWithText("Two-note chime · up to 5 times. Sound and vibration stop automatically.")
+            .performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Music & session length").performScrollTo().performClick()
+        compose.runOnIdle { org.junit.Assert.assertTrue(openedOptions) }
     }
 
     @Test fun soundControlsRemainAccessibleInHindiWithLargeText() {
